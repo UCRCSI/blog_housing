@@ -1,0 +1,87 @@
+---
+title: "data-exporation"
+author: "Alissa Ji"
+date: "6/30/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+housing <- read.csv("ahs2017_hhsubset_r.csv")
+```
+
+Geographic divisions:
+```{r}
+# Geographic division by race
+prop.table(table(housing$HHRACE2, housing$DIVISION), 2)
+
+# Geographic division by race and ethnicity
+prop.table(table(housing$RACEETH, housing$DIVISION), 2)
+
+# Geographic division by Asian ethnicity
+prop.table(table(housing$HHRACEAS, housing$DIVISION), 2) # of those who identify as Asian
+```
+
+Types of housing and federal assistance (comparing different measures of housing assistance):
+```{r}
+table(housing$TENURE)
+table(housing$BLD2) # mostly single family homes
+
+# of those who are renters (NOT owners)
+# forms of federal assistance and rent control
+table(housing$RENTCNTRL, housing$HUDSUB) # some individuals who have federal assistance are not under rent control or stabilization
+# this indicates that a large number who are eligible did not report or do not receive assistance
+
+table(housing$RENTSUB, housing$HUDSUB)
+```
+
+*Idea*: demonstrate how many people are eligible for federal housing assistance vs. receive assistance (RENTSUB), by race and geography
+
+General housing:
+```{r}
+# by race
+prop.table(table(housing$RACEETH, housing$TENURE), 1)
+prop.table(table(housing$HHRACEAS, housing$TENURE), 1)
+
+# by geography
+prop.table(table(housing$DIVISION, housing$TENURE), 1)
+```
+
+Federal housing assistance (renters):
+```{r}
+# by race and ethnicity
+table(housing$RACEETH, housing$HUDSUB)
+# prop.table(table(housing$RACEETH, housing$HUDSUB), 1)
+prop.table(table(housing$RACEETH, housing$HUDSUB), 2)
+## Asian only: much lower rate of living in public housing / voucher recipients
+
+# by Asian ethnic group
+table(housing$HHRACEAS, housing$HUDSUB)
+# prop.table(table(housing$HHRACEAS, housing$HUDSUB), 1)
+prop.table(table(housing$HHRACEAS, housing$HUDSUB), 2)
+
+# by geography
+table(housing$HUDSUB, housing$DIVISION)
+prop.table(table(housing$HUDSUB, housing$DIVISION), 2)
+
+# three-way crosstab: federal housing assistance AND Asian ethnic group by geography
+levels(housing$HUDSUB)[2] <- "Public or private"
+t1 <- xtabs(~DIVISION+RACEETH+HUDSUB, data=housing)
+ftable(t1)
+```
+
+Monthly housing costs
+```{r}
+# by race
+tapply(housing$TOTHCAMT, housing$HHRACE2, mean)
+
+# by Asian ethnic group
+tapply(housing$TOTHCAMT, housing$HHRACEAS, mean)
+```
+
+*Idea*: could calculate monthly housing costs as proportion of income
+*Idea*: renters vs. owners
+

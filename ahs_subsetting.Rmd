@@ -1,0 +1,84 @@
+---
+title: "ahs_data_cleaning"
+author: "Alissa Ji"
+date: "6/30/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(plyr)
+library(dplyr)
+library(car)
+```
+
+# Create subset of data
+Importing 2017 AHS data (flat file and household-level):
+```{r, eval = 'FALSE'}
+# ahs.flat <- read.csv("../ahs2017n.csv") # flat file
+ahs.hh <- read.csv("../AHS-2017-National-PUF_v3.0/household.csv") # household
+```
+
+Relevant variables:
+```{r, eval = 'FALSE'}
+# Householder demographic
+var.hhdem <- c("HHSEX", 
+             "HHAGE", 
+             "HHMAR", 
+             "HHRACE", 
+             "HHRACEAS", # race (Asian group)
+             "HHRACEPI", # race (Native Hawaiian or other Pacific Islander group)
+             "HHSPAN", # Spanish origin
+             "HHCITSHP", # US citizenship
+             "HHNATVTY", # country of birth
+             "HHGRAD" # educational level
+              )
+
+# Total household demographics
+var.dem <- c("DIVISION", # Census division
+             "OMB13CBSA", # 2013 OMB CBSA code
+             "BLD", # type of housing unit (structural)
+             "TENURE",
+             "HSHLDTYPE", # type of household
+             "NUMPEOPLE", # number of people living in unit
+             "NUMYNGKIDS", # number of kids < 6 yrs in unit
+             "NUMOLDKIDS", # number of kids 6-17 yrs in unit
+             "HINCP", # HH income (last 12 m)
+             "ADEQUACY" # gype of housing adequacy
+             )
+
+# Housing cost
+var.cost <- c("TOTHCAMT", # total housing costs (monthly)
+              "HUDSUB", # subsidized renter status and eligibility
+              "RENTCNTRL", # flag indicating rent is limited by rent control or stabilization 
+              "RENTSUB" # type of rental subsidy or reduction (based on respondent report)
+              )
+
+# Neighborhood features
+var.neighborhood <- c("RATINGHS", # rating of unit as a place to live
+                      "RATINGNH" # rating of neighborhood as place to live
+                      )
+
+# Delinquency
+var.del <- c("DBMISSMORT", # inability to pay mortgage (owners)
+             "DBMISSRENT", # inability to pay rent (renters)
+             "DBEVICTHT", # threat of eviction (renters)
+             "DBEVICNOTE", # receipt of eviction notice (renters)
+             "DBEVICLK", # likelihood of leaving home because of eviction (renters)
+             "DBEVICWHERE" # where household would go in event of eviction (renters)
+             )
+# Weights
+var.weight <- "WEIGHT"
+
+# All desired variables
+var.all <- c(var.hhdem, var.dem, var.cost, var.neighborhood, var.del, var.weight)
+```
+
+Export as `ahs2017_hhsubset`:
+```{r, eval = 'FALSE'}
+ahs_subset <- ahs.hh[,var.all]
+write.csv(ahs_subset, "ahs2017_hhsubset.csv")
+```

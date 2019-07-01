@@ -1,0 +1,211 @@
+---
+title: "ahs_data_cleaning"
+author: "Alissa Ji"
+date: "6/30/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(plyr)
+library(dplyr)
+library(car)
+```
+
+# Create subset of data
+Importing 2017 AHS data (flat file and household-level):
+```{r, eval = 'FALSE'}
+ahs.flat <- read.csv("../ahs2017n.csv") # flat file
+ahs.hh <- read.csv("../AHS-2017-National-PUF_v3.0/household.csv") # household
+```
+
+Relevant variables:
+```{r, eval = 'FALSE'}
+# Householder demographic
+var.hhdem <- c("HHSEX", 
+             "HHAGE", 
+             "HHMAR", 
+             "HHRACE", 
+             "HHRACEAS", # race (Asian group)
+             "HHRACEPI", # race (Native Hawaiian or other Pacific Islander group)
+             "HHSPAN", # Spanish origin
+             "HHCITSHP", # US citizenship
+             "HHNATVTY", # country of birth
+             "HHGRAD" # educational level
+              )
+
+# Total household demographics
+var.dem <- c("DIVISION", # Census division
+             "OMB13CBSA", # 2013 OMB CBSA code
+             "BLD", # type of housing unit (structural)
+             "HSHLDTYPE", # type of household
+             "NUMPEOPLE", # number of people living in unit
+             "NUMYNGKIDS", # number of kids < 6 yrs in unit
+             "NUMOLDKIDS", # number of kids 6-17 yrs in unit
+             "HINCP", # HH income (last 12 m)
+             "ADEQUACY" # gype of housing adequacy
+             )
+
+# Housing cost
+var.cost <- c("TOTHCAMT", # total housing costs (monthly)
+              "HUDSUB", # subsidized renter status and eligibility)
+              "RENTCNTRL", # flag indicating rent is limited by rent control or stabilization 
+              "RENTSUB" # type of rental subsidy or reduction (based on respondent report)
+              )
+
+# Neighborhood features
+var.neighborhood <- c("RATINGHS", # rating of unit as a place to live
+                      "RATINGNH" # rating of neighborhood as place to live
+                      )
+
+# Delinquency
+var.del <- c("DBMISSMORT", # inability to pay mortgage (owners)
+             "DBMISSRENT", # inability to pay rent (renters)
+             "DBEVICTHT", # threat of eviction (renters)
+             "DBEVICNOTE", # receipt of eviction notice (renters)
+             "DBEVICLK", # likelihood of leaving home because of eviction (renters)
+             "DBEVICWHERE" # where household would go in event of eviction (renters)
+             )
+# Weights
+var.weight <- "WEIGHT"
+
+# All desired variables
+var.all <- c(var.hhdem, var.dem, var.cost, var.neighborhood, var.del, var.weight)
+```
+
+Export as `ahs2017_hhsubset`:
+```{r, eval = 'FALSE'}
+ahs_subset <- ahs.hh[,var.all]
+write.csv(ahs_subset, "ahs2017_hhsubset.csv")
+```
+
+# Recoding variables
+```{r}
+ahs_subset <- read.csv("ahs2017_hhsubset.csv")
+```
+
+Race variables:
+```{r}
+# levels(ahs_subset$HHRACE)
+recode.hhrace <- c("'01'" = "White Only",
+                   "'02'" = "Black Only",
+                   "'03'" = "American Indian, Alaska Native Only",
+                   "'04'" = "Asian Only",
+                   "'05'" =  "Hawaiian, Pacific Islander Only",
+                   "'06'" = "White / Black",
+                   "'07'" = "White / American Indian, Alaska Native",
+                   "'08'" = "White / Asian",
+                   "'09'" = "White / Hawaiian, Pacific Islander",
+                   "'10'" = "Black / American Indian, Alaska Native",
+                   "'11'" = "Black / Asian",
+                   "'12'" = "Black / Hawaiian, Pacific Islander",
+                   "'13'" = "American Indian, Alaska Native / Asian",
+                   "'14'" = "Asian / Hawaiian, Pacific Islander",
+                   "'15'" = "White / Black / American Indian, Alaska Native",
+                   "'16'" = "White / Black /Asian",
+                   "'17'" = "White / American Indian, Alaska Native / Asian",
+                   "'18'" = "White / Asian / Hawaiian, Pacific Islander",
+                   "'19'" = "White / Black / American Indian, Alaska Native / Asian",
+                   "'20'" = "Other combinations of 2 or 3 races",
+                   "'21'" = "Other combinations of 4 or more races",
+                   "'-6'" = NA)
+ahs_subset$HHRACE <- revalue(ahs_subset$HHRACE, recode.hhrace) 
+
+# levels(ahs_subset$HHRACEAS)
+recode.hhraceas <- c("'1'" = "Asian Indian only",
+                     "'2'" = "Chinese only",
+                     "'3'" = "Filipino only",
+                     "'4'" = "Japanese only",
+                     "'5'" = "Korean only",
+                     "'6'" = "Vietnamese only",
+                     "'7'" = "Some other Asian race only",
+                     "'8'" = "Two or more Asian races",
+                     "'-6'" = NA)
+ahs_subset$HHRACEAS <- revalue(ahs_subset$HHRACEAS, recode.hhraceas)
+
+# levels(ahs_subset$HHRACEPI)
+recode.hhracepi <- c("'1'" = "Native Hawaiian only",
+                     "'2'" = "Guamanian or Chamorro only",
+                     "'3'" = "Samoan only",
+                     "'4'" = "Some other Pacific islander race only",
+                     "'5'" = "Two or more Native Hawaiian or Pacific islander races",
+                     "'-6'" = NA)
+ahs_subset$HHRACEPI <- revalue(ahs_subset$HHRACEPI, recode.hhracepi)
+```
+
+Geography and other demographic variables:
+```{r}
+# levels(ahs_subset$DIVISION)
+recode.division <- c("'1'" = "New England",
+                     "'2'" = "Middle Atlantic",
+                     "'3'" = "East North Central",
+                     "'4'" = "West North Central",
+                     "'5'" = "South Atlantic",
+                     "'6'" = "East South Central",
+                     "'7'" = "West South Central",
+                     "'8'" = "Mountain",
+                     "'9'" = "Pacific")
+ahs_subset$DIVISION <- revalue(ahs_subset$DIVISION, recode.division)
+
+# levels(ahs_subset$BLD)
+ahs_subset$BLD <- ifelse(ahs_subset$BLD == "'01'", "Mobile home or trailer",
+                         ifelse(ahs_subset$BLD %in% c("'02'", "'03'"), 
+                                "One-family house",
+                                ifelse(ahs_subset$BLD == "'10'", 
+                                "Boat, RV, van, etc.", "Apartments")))
+ahs_subset$BLD <- as.factor(ahs_subset$BLD)
+# recode.bld <- c("'01'" = "Mobile home or trailer",
+#                 "'02'" = "One-family house", # detached
+#                 "'03'" = "One-family house", # attached
+#                 "'04'" = "Apartments",
+#                 "'05'" = "Apartments",
+#                 "'06'" = "Apartments",
+#                 "'07'" = "Apartments",
+#                 "'08'" = "Apartments",
+#                 "'09'" = "Apartments",
+#                 "'10'" = "oat, RV, van, etc.")
+# ahs_subset$BLD <- revalue(ahs_subset$BLD, recode.bld)
+```
+
+Housing variables:
+```{r}
+ahs_subset$TOTHCAMT[ahs_subset$TOTHCAMT < 0] <- NA
+
+# levels(ahs_subset$HUDSUB)
+recode.hudsub <- c("'1'" = "Public housing tenants and tenants in privately owned assisted housing units",
+                   "'2'" = "Voucher recipients",
+                   "'3'" = "All other renter occupied units",
+                   "'-6'" = NA)
+ahs_subset$HUDSUB <- revalue(ahs_subset$HUDSUB, recode.hudsub)
+
+# levels(ahs_subset$RENTCNTRL)
+recode.rentcntrl <- c("'1'" = "Rent control or stabilization",
+                      "'2'" = "No rent control or stabilization",
+                      "'-9'" = NA,
+                      "'-6'" = NA)
+ahs_subset$RENTCNTRL <- revalue(ahs_subset$RENTCNTRL, recode.rentcntrl)
+
+# levels(ahs_subset$RENTSUB)
+recode.rentsub <- c("'1'" = "Public housing",
+                    "'2'" = "Portable voucher",
+                    "'3'" = "Non-portable voucher",
+                    "'4'" = "Other government subsidy",
+                    "'5'" = "Rent reduction requiring annual recertification not reported elsewhere",
+                    "'6'" = "Rent reduction because household member works for owner",
+                    "'7'" = "Rent reduction because household member related to owner",
+                    "'8'" = "No rental subsidy or reduction",
+                    "'-9'" = NA,
+                    "'-6'" = NA)
+ahs_subset$RENTSUB <- revalue(ahs_subset$RENTSUB, recode.rentsub)
+```
+
+1. Recode variables, possibly using SAS file and CSV recodes
+2. Clean up data
+3. Basic cross tabs, check against national estimates
+- HUDSUB vs. CENSUS
+- RACE vs. HUDSUB
+- RACEAS, RACEPI vs. HUDSUB
+- 
