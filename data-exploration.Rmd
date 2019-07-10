@@ -1,7 +1,7 @@
 ---
-title: "data-exporation"
+title: "data-exploration"
 author: "Alissa Ji"
-date: "6/30/2019"
+date: "7/10/2019"
 output: html_document
 ---
 
@@ -10,7 +10,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-housing <- read.csv("ahs2017_hhsubset_r.csv")
+# housing <- read.csv("ahs2017_hhsubset_r.csv")
+housing <- read.csv("ahs2017_flat_r.csv")
 ```
 
 Geographic divisions:
@@ -84,4 +85,121 @@ tapply(housing$TOTHCAMT, housing$HHRACEAS, mean)
 
 *Idea*: could calculate monthly housing costs as proportion of income
 *Idea*: renters vs. owners
+
+# Sample sizes
+
+Sample size in each region:
+```{r}
+ahs_subset %>% group_by(DIVISION) %>% summarize(n.count = n())
+```
+Regions with highest number of households sampled: 
+(1) South Atlantic, n=14257;
+(2) Pacific, n=13330;
+(3) East North Central, n=9408
+
+Regions with smallest number of households sampled:
+(1) East South Central, n=2752;
+(2) West North Central, n=3036;
+(3) New England, n=3577
+
+Sample size by race and ethnicity:
+```{r}
+ahs_subset %>% group_by(RACEETH) %>% summarize(n.count = n())
+
+ahs_subset %>% group_by(HHSPAN2) %>% summarize(n.count = n())
+
+```
+
+# Cross-checking against Racial Data
+
+## Demographics of Head of Household
+
+Racial breakdown:
+```{r}
+prop.raceeth <- prop.table(table(housing$RACEETH)) # excluding Hispanic Whites
+prop.hhspan2 <- prop.table(table(housing$HHSPAN2))
+
+# from Racial Data
+total.pop.rd <- 321004407
+race.rd <- c(2632102, 17186320, 40610815, 570116, 197277789)
+race.rd <- race.rd / sum(race.rd)
+names(race.rd) <- c("AIAN Alone", "Asian Alone", "Black Alone", "NHPI Alone",
+                    "White Alone NH")
+hisp.rd <- 56510571
+prop.hisp.rd <- hisp.rd / total.pop.rd
+
+# Calculate % difference
+(prop.raceeth - race.rd) / race.rd
+prop.hhspan2[1] - prop.hisp.rd
+```
+
+Margin of error > 25%:
+AIAN Alone error: 35.667%
+NHPI Alone error: 122.371%
+
+HH income by race:
+```{r}
+inc.mean.byrace <- tapply(housing$HINCP, housing$RACEETH, mean) # mean
+inc.med.byrace <- tapply(housing$HINCP, housing$RACEETH, median) # median
+
+inc.mean.hhspan <- tapply(housing$HINCP, housing$HHSPAN2, mean) # mean
+inc.med.hhspan <- tapply(housing$HINCP, housing$HHSPAN2, median) # median
+
+# from Racial Data
+inc.med.rd <- c(40315, 80398, 38183, 57372, 63256)
+names(inc.med.rd) <- c("AIAN Alone", "Asian Alone", "Black Alone", "NHPI Alone",
+                       "White Alone NH")
+inc.span.rd <- 46627
+
+# Calculate % difference
+(inc.med.byrace - inc.med.rd) / inc.med.rd
+(inc.med.hhspan[1] - inc.span.rd) / inc.span2.rd
+```
+
+All incomes within 25% of Racial Data estimates. The highest margin of error is -12.265% for Black Alone, indicating that the AHS survey results underestimated household incomes as compared to the ACS.
+
+Age by race:
+```{r}
+age.byrace <- tapply(housing$HHAGE, housing$RACEETH, median)
+age.byspan <- tapply(housing$HHAGE, housing$HHSPAN2, median)
+
+# from Racial Data
+age.rd <- c(32.5, 36.7, 33.6, 31.4, 43.2)
+names(age.rd) <- c("AIAN Alone", "Asian Alone", "Black Alone", "NHPI Alone",
+                       "White Alone NH")
+age.span.rd <- 28.7
+
+# Calculate % difference
+(age.byrace - age.rd) / age.rd
+(age.byspan[1] - age.span.rd) / age.span.rd
+```
+
+Margin of error on ages of householder are all > 25%, which is expected because the subpopulation of householders is likely much older than the overall population.
+
+Homeownership by race:
+```{r}
+tenure.byrace <- prop.table(table(housing$RACEETH, housing$TENURE), 1)
+tenure.byspan <- prop.table(table(housing$HHSPAN2, housing$TENURE), 1)
+
+# from Racial Data
+tenure.rd <- matrix(c(0.541, 0.587, 0.419, 0.401, 0.716, 
+                    0.459, 0.413, 0.581, 0.599, 0.284),
+                    nrow = 5, ncol = 2, byrow = TRUE)
+rownames(tenure.rd) <- c("AIAN Alone", "Asian Alone", "Black Alone", "NHPI Alone",
+                       "White Alone NH")
+colnames(tenure.rd) <- c("Owners", "Renters")
+
+tenure.span.rd <- c(0.464, 0.536)
+names(tenure.span.rd) <- c("Owners", "Renters")
+
+# Calculate % difference
+(tenure.byrace[,2:3] - tenure.rd) / tenure.rd
+(tenure.byspan[1,2:3] - tenure.span.rd) / tenure.span.rd
+```
+
+AHS margin of error > 25% for:
+* Asian Alone, Owner
+* Black Alone, Owner and Renter (most significant)
+
+## Demographics of Household
 
