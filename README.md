@@ -4,6 +4,7 @@ Hi Alissa,
 
 Below is a recommended work flow for this project. 
 
+cross check data between the survey and ACS
 
 1. Identify relavant variables in the raw data and recode them to easy-to-read format
 2. Run some simple crosstabs to create an overview of the demographic
