@@ -9,11 +9,160 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+Load relevant libraries:
+```{r}
+library(survey)
+library(dplyr)
+```
+
+Load data:
 ```{r}
 # housing <- read.csv("ahs2017_hhsubset_r.csv")
 housing <- read.csv("ahs2017_flat_r.csv")
 ```
 
+# Weighted exploratory analysis
+
+Adding weights:
+```{r}
+housing.w <- svydesign(ids = ~1, data = housing, weights = housing$WEIGHT)
+# summary(housing.w)
+```
+
+```{r}
+# HHSEX
+prop.table(table(housing$HHSEX))
+prop.table(svytable(~HHSEX, design = housing.w))
+# prop.table(svytable(~HHSEX + HHRACE, design = housing.w), 2)
+```
+
+# Cross-checking against Census FactFinder
+
+## Household race definition #1: All persons in household identify with a given race
+Sample size in each region:
+```{r}
+housing %>% group_by(HOUSEHOLDRACE) %>% summarize(n.count = n())
+```
+## Household race definition #2: Only householder identifies with a given race
+Sample size in each region:
+```{r}
+housing %>% group_by(HHRACE3) %>% summarize(n.count = n())
+```
+
+## Racial breakdown/eth:
+```{r}
+# by #1: entire houshold
+prop.house.race <- prop.table(svytable(~HOUSEHOLDRACE, design = housing.w)) # excluding Hispanic Whites
+prop.house.raceeth <- prop.table(svytable(~HOUSEHOLDRACEETH, design = housing.w)) # excluding Hispanic Whites
+prop.house.span <- prop.table(svytable(~HOUSEHOLDSPAN, design = housing.w))
+
+# by #2: householder
+prop.hh.race <- prop.table(svytable(~HHRACE3, design = housing.w)) # excluding Hispanic Whites
+prop.hh.raceeth <- prop.table(svytable(~RACEETH, design = housing.w)) # excluding Hispanic Whites
+prop.hh.span <- prop.table(svytable(~HHSPAN2, design = housing.w))
+
+# from Fact Finder
+race.ff <- c(2726278, 18215328, 41393491, 608219, 235507457)
+names(race.ff) <- c("AIAN Alone", "Asian Alone", "Black Alone", "NHPI Alone",
+                    "White Alone")
+prop.race.ff <- race.ff / sum(race.ff)
+
+raceeth.ff <- c(2726278, 18215328, 41393491, 608219, 197285202)
+names(raceeth.ff) <- c("AIAN Alone", "Asian Alone", "Black Alone", "NHPI Alone",
+                    "White NH Alone")
+prop.raceeth.ff <- raceeth.ff / sum(raceeth.ff)
+
+hisp.ff <- 56510571
+total.pop.ff <- 321004407
+prop.hisp.ff <- hisp.ff / total.pop.ff
+
+# Calculate % difference
+## def #1:
+(prop.house.race - prop.race.ff) / prop.race.ff
+(prop.house.raceeth - prop.raceeth.ff) / prop.raceeth.ff
+(prop.house.span[1] - prop.hisp.ff) / prop.hisp.ff
+
+## def #2
+(prop.hh.race - prop.race.ff) / prop.race.ff
+(prop.hh.raceeth - prop.raceeth.ff) / prop.raceeth.ff
+(prop.hh.span[1] - prop.hisp.ff) / prop.hisp.ff
+```
+
+Household race (def #1) numbers have margin of error > 25% for:
+* Asian households: -0.24888033
+* NHPI households: 0.34009632
+
+Householder race (def #2) numbers have much smaller margin of error for white and Black population estimates but larger margin of error for the following groups, >25%:
+* AIAN: 0.356737430
+* Asian: -0.193478359
+* NHPI: 0.786307222
+
+Unsurprising that race at level of household doesn't entire match 2017 ACS data because AHS conducted at level of the household.
+
+## HH income by race/eth:
+** Note: running into issues here **
+```{r}
+# by #1: household
+inc.med.byhouserace <- svyby(~HINCP, ~HOUSEHOLDRACE, housing.w, svyquantile, quantiles=0.5, na.rm = FALSE)
+inc.med.byhousespan <- svyby(~HINCP, ~HOUSEHOLDSPAN, housing.w, svymean)
+
+# by #2: householder
+inc.med.byhhrace <- svyby(~HINCP, ~HHRACE3, housing.w, svyquantile, quantiles=0.5, na.rm = FALSE)
+inc.med.byhhspan <- svyby(~HINCP, ~HHSPAN2, housing.w, svyquantile, quantiles=0.5, na.rm = FALSE)
+
+# from Fact Finder (inflation-adjusted dollars)
+inc.med.ff <- c(41882, 83456, 40232, 60734, 63704)
+names(inc.med.ff) <- c("AIAN Alone", "Asian Alone", "Black Alone", "NHPI Alone",
+                       "White Alone")
+inc.span.rd <- 49793
+
+# Calculate % difference
+(inc.med.byhouserace - inc.med.ff) / inc.med.ff
+(inc.med.byhhrace - inc.med.ff) / inc.med.ff
+
+(inc.med.housingspan[1] - inc.span.ff) / inc.span.ff
+(inc.med.hhspan[1] - inc.span.ff) / inc.span.ff
+```
+
+## Homeownership by race/eth:
+```{r}
+# by #1: entire houshold
+tenure.byhousingrace <- prop.table(svytable(~HOUSEHOLDRACE + TENURE, design = housing.w), 1)
+tenure.byhousingspan <- prop.table(svytable(~HOUSEHOLDSPAN + TENURE, design = housing.w), 1)
+
+
+# by #2: householder
+tenure.byhhrace <- prop.table(svytable(~HHRACE3 + TENURE, design = housing.w), 1)
+tenure.byhhspan <- prop.table(svytable(~HHSPAN2 + TENURE, design = housing.w), 1)
+
+# from Fact Finder
+tenure.ff <- matrix(c(0.544, 0.456, 
+                      0.596, 0.404, 
+                      0.414, 0.586, 
+                      0.412, 0.588, 
+                      0.695, 0.305),
+                    nrow = 5, ncol = 2, byrow = TRUE)
+rownames(tenure.ff) <- c("AIAN Alone", "Asian Alone", "Black Alone", "NHPI Alone",
+                       "White Alone")
+colnames(tenure.ff) <- c("Owners", "Renters")
+
+tenure.span.ff <- c(0.472, 0.528)
+names(tenure.span.ff) <- c("Owners", "Renters")
+
+# Calculate % difference
+## by #1:
+(tenure.byhousingrace[,2:3] - tenure.ff) / tenure.ff
+(tenure.byhousingspan[1,2:3] - tenure.span.ff) / tenure.span.ff
+
+## by #2:
+(tenure.byhhrace[,2:3] - tenure.ff) / tenure.ff
+(tenure.byhhspan[1,2:3] - tenure.span.ff) / tenure.span.ff
+```
+
+* Similar margin of error across race definitions, but def #2 has slightly smaller error for AIAN and NHPI households, likely due to greater sample size
+* Margin of error reasonable, nearing 25% for AIAN households in def #1
+
+# Additional exploratory analysis
 Geographic divisions:
 ```{r}
 # Geographic division by race

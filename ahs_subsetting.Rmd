@@ -17,7 +17,7 @@ library(car)
 
 # Create subset of data
 Importing 2017 AHS data (flat file and household-level):
-```{r, eval = 'FALSE'}
+```{r, eval = FALSE}
 ahs.flat <- read.csv("../ahs2017n.csv") # flat file
 ahs.hh <- read.csv("../AHS-2017-National-PUF_v3.0/household.csv") # household
 ahs.person <- read.csv("../AHS-2017-National-PUF_v3.0/person.csv") # person file
@@ -25,7 +25,7 @@ ahs.person <- read.csv("../AHS-2017-National-PUF_v3.0/person.csv") # person file
 ```
 
 Relevant variables:
-```{r, eval = 'FALSE'}
+```{r}
 # Householder demographic
 var.hhdem <- c("HHSEX", 
              "HHAGE", 
@@ -79,13 +79,14 @@ var.weight <- "WEIGHT"
 var.all <- c(var.hhdem, var.dem, var.cost, var.neighborhood, var.del, var.weight)
 ```
 
+Person race and ethnicity variables:
 ```{r}
-var.races <- colnames(ahs.flat)[grepl("^RACE\\d", names(ahs.flat))]
-var.span <- colnames(ahs.flat)[grepl("^SPAN\\d", names(ahs.flat))]
+var.races <- colnames(ahs.flat)[grepl("^RACE\\d+$", names(ahs.flat))]
+var.span <- colnames(ahs.flat)[grepl("^SPAN\\d+$", names(ahs.flat))]
 ```
 
 Export as `ahs2017_hhsubset`:
-```{r, eval = 'FALSE'}
+```{r, eval = FALSE}
 ahs_subset <- ahs.hh[,var.all]
 ahs_subset_flat <- ahs.flat[,c(var.all, var.races, var.span)]
 write.csv(ahs_subset, "ahs2017_hhsubset.csv")
