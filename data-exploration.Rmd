@@ -78,14 +78,14 @@ prop.hisp.ff <- hisp.ff / total.pop.ff
 
 # Calculate % difference
 ## def #1:
-(prop.house.race - prop.race.ff) / prop.race.ff
-(prop.house.raceeth - prop.raceeth.ff) / prop.raceeth.ff
-(prop.house.span[1] - prop.hisp.ff) / prop.hisp.ff
+(prop.house.race - prop.race.ff) 
+(prop.house.raceeth - prop.raceeth.ff)
+(prop.house.span[1] - prop.hisp.ff)
 
 ## def #2
-(prop.hh.race - prop.race.ff) / prop.race.ff
-(prop.hh.raceeth - prop.raceeth.ff) / prop.raceeth.ff
-(prop.hh.span[1] - prop.hisp.ff) / prop.hisp.ff
+(prop.hh.race - prop.race.ff)
+(prop.hh.raceeth - prop.raceeth.ff)
+(prop.hh.span[1] - prop.hisp.ff)
 ```
 
 Household race (def #1) numbers have margin of error > 25% for:
