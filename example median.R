@@ -1,3 +1,6 @@
+library(tidyverse)
+library(srvyr)
+
 dta <- read_rds("pums_final.rds") %>%
   mutate(statefip = as_factor(lbl_clean(statefip)))
 
@@ -8,3 +11,5 @@ pums_weighted <- income %>%
 pums_weighted %>%
   group_by(aapi_alone) %>%
   summarize(median_income = survey_median(income_2017,na.rm = T)) -> final_dta1
+
+
