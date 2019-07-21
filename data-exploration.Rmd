@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 Load relevant libraries:
 ```{r}
 library(survey)
-library(dplyr)
+library(tidyverse)
 ```
 
 Load data:
@@ -151,12 +151,12 @@ names(tenure.span.ff) <- c("Owners", "Renters")
 
 # Calculate % difference
 ## by #1:
-(tenure.byhousingrace[,2:3] - tenure.ff) / tenure.ff
-(tenure.byhousingspan[1,2:3] - tenure.span.ff) / tenure.span.ff
+(tenure.byhousingrace[,2:3] - tenure.ff)
+(tenure.byhousingspan[1,2:3] - tenure.span.ff)
 
 ## by #2:
-(tenure.byhhrace[,2:3] - tenure.ff) / tenure.ff
-(tenure.byhhspan[1,2:3] - tenure.span.ff) / tenure.span.ff
+(tenure.byhhrace[,2:3] - tenure.ff)
+(tenure.byhhspan[1,2:3] - tenure.span.ff)
 ```
 
 * Similar margin of error across race definitions, but def #2 has slightly smaller error for AIAN and NHPI households, likely due to greater sample size
