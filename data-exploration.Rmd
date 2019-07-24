@@ -13,6 +13,7 @@ Load relevant libraries:
 ```{r}
 library(survey)
 library(tidyverse)
+library(srvyr)
 ```
 
 Load data:
@@ -26,6 +27,7 @@ housing <- read.csv("ahs2017_flat_r.csv")
 Adding weights:
 ```{r}
 housing.w <- svydesign(ids = ~1, data = housing, weights = housing$WEIGHT)
+housing_weighted <- housing %>% as_survey_design(ids = 1, weight = WEIGHT)
 # summary(housing.w)
 ```
 
@@ -100,28 +102,31 @@ Householder race (def #2) numbers have much smaller margin of error for white an
 Unsurprising that race at level of household doesn't entire match 2017 ACS data because AHS conducted at level of the household.
 
 ## HH income by race/eth:
-** Note: running into issues here **
 ```{r}
 # by #1: household
-inc.med.byhouserace <- svyby(~HINCP, ~HOUSEHOLDRACE, housing.w, svyquantile, quantiles=0.5, na.rm = FALSE)
-inc.med.byhousespan <- svyby(~HINCP, ~HOUSEHOLDSPAN, housing.w, svymean)
+housing_weighted %>% group_by(HOUSEHOLDRACE) %>%
+  summarize(median_income = survey_median(HINCP)) -> inc.med.byhouserace
+housing_weighted %>% group_by(HOUSEHOLDSPAN) %>%
+  summarize(median_income = survey_median(HINCP)) -> inc.med.byhousespan
 
 # by #2: householder
-inc.med.byhhrace <- svyby(~HINCP, ~HHRACE3, housing.w, svyquantile, quantiles=0.5, na.rm = FALSE)
-inc.med.byhhspan <- svyby(~HINCP, ~HHSPAN2, housing.w, svyquantile, quantiles=0.5, na.rm = FALSE)
+housing_weighted %>% group_by(HHRACE3) %>%
+  summarize(median_income = survey_median(HINCP)) -> inc.med.byhhrace
+housing_weighted %>% group_by(HHSPAN2) %>%
+  summarize(median_income = survey_median(HINCP)) -> inc.med.byhhspan
 
 # from Fact Finder (inflation-adjusted dollars)
 inc.med.ff <- c(41882, 83456, 40232, 60734, 63704)
 names(inc.med.ff) <- c("AIAN Alone", "Asian Alone", "Black Alone", "NHPI Alone",
                        "White Alone")
-inc.span.rd <- 49793
+inc.span.ff <- 49793
 
 # Calculate % difference
-(inc.med.byhouserace - inc.med.ff) / inc.med.ff
-(inc.med.byhhrace - inc.med.ff) / inc.med.ff
+(unlist(inc.med.byhouserace[1:5,2]) - inc.med.ff) / inc.med.ff
+(unlist(inc.med.byhhrace[1:5,2]) - inc.med.ff) / inc.med.ff 
 
-(inc.med.housingspan[1] - inc.span.ff) / inc.span.ff
-(inc.med.hhspan[1] - inc.span.ff) / inc.span.ff
+(unlist(inc.med.byhousespan[1,2]) - inc.span.ff) / inc.span.ff
+(unlist(inc.med.byhhspan[1,2]) - inc.span.ff) / inc.span.ff
 ```
 
 ## Homeownership by race/eth:
