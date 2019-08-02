@@ -180,7 +180,6 @@ inc.byrace <- rbind(inc.byhouserace, inc.byhhrace) # COL3
 colnames(inc.byhousespan)[1] <- colnames(inc.byhhspan)[1] <- "Household span"
 inc.byspan <- rbind(inc.byhousespan, inc.byhhspan) # COL3
 
-
 ## Income as % of poverty level --------------------------------------------
 housing_weighted %>% 
   filter(HOUSEHOLDRACE != "(Missing)" & !(is.na(PERPOVLVL))) %>% 
