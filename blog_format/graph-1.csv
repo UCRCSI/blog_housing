@@ -1,0 +1,13 @@
+﻿group,key,key_order,estimate
+Black or African American alone,HUD80,12,0.05
+AIAN alone,HUD80,11,0.1
+Asian alone,HUD80,10,0.15
+NHPI alone,HUD80,9,0.2
+White alone  (Non-Hispanic),HUD80,8,0.25
+Hispanic of any race,HUD80,7,0.3
+Black or African American alone,HUD30,6,0.35
+AIAN alone,HUD30,5,0.4
+Asian alone,HUD30,4,0.45
+NHPI alone,HUD30,3,0.5
+White alone  (Non-Hispanic),HUD30,2,0.55
+Hispanic of any race,HUD30,1,0.6

@@ -1,0 +1,25 @@
+﻿group,key,key_order,estimate
+Black or African American alone,Public Housing,1,0.3
+AIAN alone,Public Housing,2,0.25
+Asian alone,Public Housing,3,0.2
+NHPI alone,Public Housing,4,0.15
+White alone  (Non-Hispanic),Public Housing,5,0.1
+Hispanic of any race,Public Housing,6,0.05
+Black or African American alone,Housing Voucher,1,0.1
+AIAN alone,Housing Voucher,2,0.1
+Asian alone,Housing Voucher,3,0.1
+NHPI alone,Housing Voucher,4,0.1
+White alone  (Non-Hispanic),Housing Voucher,5,0.1
+Hispanic of any race,Housing Voucher,6,0.1
+Black or African American alone,Other Renter,1,0.1
+AIAN alone,Other Renter,2,0.1
+Asian alone,Other Renter,3,0.1
+NHPI alone,Other Renter,4,0.1
+White alone  (Non-Hispanic),Other Renter,5,0.1
+Hispanic of any race,Other Renter,6,0.1
+Black or African American alone,Owner,1,0.1
+AIAN alone,Owner,2,0.1
+Asian alone,Owner,3,0.1
+NHPI alone,Owner,4,0.1
+White alone  (Non-Hispanic),Owner,5,0.1
+Hispanic of any race,Owner,6,0.1
