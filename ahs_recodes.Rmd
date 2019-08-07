@@ -17,7 +17,7 @@ library(dplyr)
 # Recoding variables:
 ```{r}
 # ahs_subset <- read.csv("ahs2017_hhsubset.csv")
-ahs_flat <- read.csv("ahs2017_hhsubset_flat.csv")
+ahs_flat <- read.csv("raw data/ahs2017_hhsubset_flat.csv")
 ```
 
 # For Flat File:
@@ -446,6 +446,18 @@ ahs_flat$PERPOVLVL[ahs_flat$PERPOVLVL < 0] <- NA
 
 # POVLVLINC
 ahs_flat$POVLVLINC[ahs_flat$POVLVLINC < 0] <- NA
+
+# HUDINCLIM_80_FLAG
+ahs_flat <- ahs_flat %>% mutate(HUDINCLIM_80_FLAG = ifelse(PERPOVLVL < 80, 1, 0))
+ahs_flat$HUDINCLIM_80_FLAG <- as.factor(ahs_flat$HUDINCLIM_80_FLAG)
+
+# HUDINCLIM_50_FLAG
+ahs_flat <- ahs_flat %>% mutate(HUDINCLIM_50_FLAG = ifelse(PERPOVLVL < 50, 1, 0))
+ahs_flat$HUDINCLIM_50_FLAG <- as.factor(ahs_flat$HUDINCLIM_50_FLAG)
+
+# HUDINCLIM_30_FLAG
+ahs_flat <- ahs_flat %>% mutate(HUDINCLIM_30_FLAG = ifelse(PERPOVLVL < 30, 1, 0))
+ahs_flat$HUDINCLIM_30_FLAG <- as.factor(ahs_flat$HUDINCLIM_30_FLAG)
 ```
 
 Housing delinquency:
@@ -509,7 +521,7 @@ ahs_flat$DBEVICWHERE <- revalue(ahs_flat$DBEVICWHERE, recode.dbevicwhere)
 
 ## Export as `ahs2017_flat_r`:
 ```{r}
-write.csv(ahs_flat, "ahs2017_flat_r.csv")
+write.csv(ahs_flat, "raw data/ahs2017_flat_r.csv")
 ```
 
 Another approach to recoding household race variables (unsuccessful):

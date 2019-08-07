@@ -5,13 +5,14 @@ library(srvyr)
 library(forcats)
 library(reshape2)
 library(openxlsx)
-
+library(lazyeval)
+library(rlang)
 
 # Loading and cleaning data -----------------------------------------------
-# Load data
-housing <- read.csv("ahs2017_flat_r.csv")
+## Load data
+housing <- read.csv("raw data/ahs2017_flat_r.csv")
 
-# Clean data
+## Clean data
 # relabeling HH race and ethnicity levels
 levels(housing$HHRACE3) <- c("HH AIAN", "HH Asian", "HH Black", "HH NHPI", "HH White")
 levels(housing$HHSPAN2) <- c("HH Hispanic or Latinx", "HH Not Hispanic or Latinx")
@@ -38,15 +39,44 @@ col_factor <- colnames(housing)[!(colnames(housing) %in%
 
 housing[,col_factor] <- lapply(housing[,col_factor], function(x) fct_explicit_na(x)) %>% as.data.frame
 
-# Weight data
+## Weight data
 housing_weighted <- housing %>% as_survey_design(ids = 1, weight = WEIGHT)
 
-
 # Sample-info sheets ------------------------------------------------------
+
+## Setting up Excel
+excelfile <- createWorkbook()
+
 ################################
 # Sheet 1: sample-info-race    #
 ################################
 
+totals_by_variable <- function(df, group_var) {
+  df %>% filter_(interp(~n_distinct(as.name(group_var))) != "(Missing)") %>% 
+    group_by_(as.name(group_var)) %>% summarize(n = survey_total()) -> tmp
+  return (tmp)
+}
+
+totals_by_variable <- function(df, group_var) {
+  group_var <- enquo(group_var)
+  df %>% filter(!!group_var != "(Missing)") %>% 
+    group_by(!!group_var) %>% summarize(n = survey_total()) -> tmp
+  return (tmp)
+}
+
+
+race_household <- totals_by_variable(housing_weighted, "HOUSEHOLDRACE")
+race_HH <- totals_by_variable(housing_weighted, "HHRACE3")
+
+# totals_by_variable <- function(df, group_var) {
+#   df %>% group_by_(.dots = lazyeval::lazy(group_var)) %>% summarize(n = survey_total()) -> tmp
+#   return (tmp)
+# }
+
+
+
+race_household <- totals_by_variable(housing_weighted, "HOUSEHOLDRACE")
+# ----
 housing_weighted %>% filter(HOUSEHOLDRACE != "(Missing)") %>% 
   group_by(HOUSEHOLDRACE) %>% summarize(n = survey_total()) -> race_household
 housing_weighted %>% filter(HHRACE3 != "(Missing)") %>% group_by(HHRACE3) %>% 
@@ -55,8 +85,9 @@ housing_weighted %>% filter(HHRACE3 != "(Missing)") %>% group_by(HHRACE3) %>%
 colnames(race_household)[1] <- colnames(race_HH)[1] <- "Household race"
 tmp <- rbind(race_household, race_HH)
 
+addWorksheet(wb = excelfile, sheetName = "sample-info-race", gridLines = TRUE)
+writeData(wb = excelfile, sheet = "sample-info-race", x = tmp, startCol = 1, startRow = 1)
 # write.csv(tmp, "sample-info-race.csv")
-write.xlsx(tmp, "exploratory-analysis.xlsx", sheetNAME = "sample-info-race", append = TRUE)
 
 ################################
 # Sheet 2: sample-info-span    #
@@ -70,8 +101,9 @@ housing_weighted %>% filter(HHSPAN2 != "(Missing)") %>%
 colnames(span_household)[1] <- colnames(span_HH)[1] <- "Household span"
 tmp <- rbind(span_household, span_HH)
 
+addWorksheet(wb = excelfile, sheetName = "sample-info-span", gridLines = TRUE)
+writeData(wb = excelfile, sheet = "sample-info-span", x = tmp, startCol = 1, startRow = 1)
 # write.csv(tmp, "sample-info-span.csv")
-write.xlsx(tmp, "exploratory-analysis.xlsx", sheetNAME = "sample-info-span", append = TRUE)
 
 ##################################
 # Sheet 3: sample-info-raceeth   #
@@ -85,7 +117,9 @@ housing_weighted %>% filter(RACEETH != "(Missing)") %>%
 colnames(raceeth_household)[1] <- colnames(raceeth_HH)[1] <- "Household raceeth"
 tmp <- rbind(raceeth_household, raceeth_HH)
 
-write.csv(tmp, "sample-info-raceeth.csv")
+addWorksheet(wb = excelfile, sheetName = "sample-info-raceeth", gridLines = TRUE)
+writeData(wb = excelfile, sheet = "sample-info-raceeth", x = tmp, startCol = 1, startRow = 1)
+# write.csv(tmp, "sample-info-raceeth.csv")
 
 # Analysis sheets ---------------------------------------------------------
 
@@ -94,7 +128,6 @@ write.csv(tmp, "sample-info-raceeth.csv")
 ########################
 
 # Columns:
-
 
 ## Racial proportions ------------------------------------------------------
 house_race <- housing_weighted %>% filter(HOUSEHOLDRACE != "(Missing)") %>% 
@@ -153,7 +186,6 @@ division.byhhspan <- cbind(tmp2, tmp3[,c(2:10)])
 
 colnames(division.byhousespan)[1] <- colnames(division.byhhspan)[1] <- "Household race"
 division.byspan <- rbind(division.byhousespan, division.byhhspan) # COL 2
-
 
 ## Median income -----------------------------------------------------------
 # by #1: household
@@ -401,10 +433,19 @@ missrent.byspan <- rbind(missrent.byhousespan, missrent.byhhspan) # COL 8
 all_race_stats <- cbind(race_prop, inc.byrace[,-1], pov.byrace[,-1], tenure.byrace[,-1], 
                         hudsub.byrace[,-1], rentcntrl.byrace[,-1], missrent.byrace[,-1],
                         division.byrace[,-1])
-write.csv(all_race_stats, "analysis-byrace.csv")
+addWorksheet(wb = excelfile, sheetName = "analysis-byrace", gridLines = TRUE)
+writeData(wb = excelfile, sheet = "analysis-byrace", x = all_race_stats, 
+          startCol = 1, startRow = 1)
+# write.csv(all_race_stats, "analysis-byrace.csv")
 
 ## by span eth
 all_span_stats <- cbind(span_prop, inc.byspan[,-1], pov.byspan[,-1], tenure.byspan[,-1], 
                         hudsub.byspan[,-1], rentcntrl.byspan[,-1], missrent.byspan[,-1],
                         division.byspan[,-1])
-write.csv(all_span_stats, "analysis-byspan.csv")
+addWorksheet(wb = excelfile, sheetName = "analysis-byspan", gridLines = TRUE)
+writeData(wb = excelfile, sheet = "analysis-byspan", x = all_span_stats, 
+          startCol = 1, startRow = 1)
+# write.csv(all_span_stats, "analysis-byspan.csv")
+
+## write into Excel sheet
+openxlsx::saveWorkbook(excelfile, "csv files/exploratory-analysis.xlsx",  overwrite = TRUE)
