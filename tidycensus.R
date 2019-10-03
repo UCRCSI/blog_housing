@@ -6,7 +6,6 @@ library(tidyverse)
 
 
 # normally you can do this ------------------------------------------------
-
 #national level median family income
 fincome_avg_us <- get_acs(table = "B19113", year = 2017, survey = "acs1", geography = "us")
 fincome_blk_us <- get_acs(table = "B19113B", year = 2017, survey = "acs1", geography = "us")

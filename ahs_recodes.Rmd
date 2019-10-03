@@ -390,6 +390,11 @@ ahs_flat$NUMOLDKIDS[ahs_flat$NUMOLDKIDS < 0] <- NA
 ahs_flat$HINCP[ahs_flat$HINCP == -6] <- NA
 summary(ahs_flat$HINCP[ahs_flat$HINCP < 0])
 
+# FINCP
+# summary(ahs_flat$FINCP)
+ahs_flat$FINCP[ahs_flat$FINCP == -6] <- NA
+summary(ahs_flat$FINCP[ahs_flat$FINCP < 0])
+
 # ADEQUACY
 # levels(ahs_flat$ADEQUACY)
 recode.adequacy <- c("'1'" = "Adequate",

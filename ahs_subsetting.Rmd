@@ -48,6 +48,7 @@ var.dem <- c("DIVISION", # Census division
              "NUMYNGKIDS", # number of kids < 6 yrs in unit
              "NUMOLDKIDS", # number of kids 6-17 yrs in unit
              "HINCP", # HH income (last 12 m)
+             "FINCP", # Family income (last 12 m)
              "ADEQUACY" # type of housing adequacy
              )
 
@@ -89,7 +90,7 @@ var.span <- colnames(ahs.flat)[grepl("^SPAN\\d+$", names(ahs.flat))]
 Export as `ahs2017_hhsubset`:
 ```{r, eval = FALSE}
 ahs_subset_flat <- ahs.flat[,c(var.all, var.races, var.span)]
-write.csv(ahs_subset_flat, "ahs2017_hhsubset_flat.csv")
+write.csv(ahs_subset_flat, "raw data/ahs2017_hhsubset_flat.csv")
 
 ahs_subset <- ahs.hh[,var.all]
 write.csv(ahs_subset, "ahs2017_hhsubset.csv")

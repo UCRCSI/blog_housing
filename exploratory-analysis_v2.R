@@ -6,6 +6,7 @@ library(forcats)
 library(reshape2)
 library(openxlsx)
 library(rlang)
+library(tidycensus)
 
 # Loading and cleaning data -----------------------------------------------
 ## Load data
@@ -39,7 +40,7 @@ var.pov <- colnames(housing)[grepl("+POV", names(housing))]
 col_factor <- colnames(housing)[!(colnames(housing) %in%
                                     c(var.races, var.span, var.num, var.rating,
                                       var.flag, var.pov, "X.1", "X", "HHAGE", 
-                                      "HINCP", "TOTHCAMT", "WEIGHT"))]
+                                      "HINCP", "FINCP", "TOTHCAMT", "WEIGHT"))]
 
 housing[,col_factor] <- lapply(housing[,col_factor], function(x) fct_explicit_na(x)) %>% as.data.frame
 
@@ -451,3 +452,23 @@ writeData(wb = excelfile_hud, sheet = "missrent-byspan",
 
 ## write into Excel
 openxlsx::saveWorkbook(excelfile_hud, "csv files/hud-analysis.xlsx",  overwrite = TRUE)
+
+# Housing discrimination by family income ---------------------------------
+
+## sample-info
+finc.byrace <- apply_by_defs_two(housing_weighted, "twoway_median",
+                                 race.label, race.defs, "FINCP")
+finc.byspan <- apply_by_defs_two(housing_weighted, "twoway_median",
+                                 span.label, span.defs, "FINCP")
+## reading in ACS median income tables by geography
+census_api_key("11654cc6c6ee4ff4791e54461c9b48da31c5ff68", install = TRUE)
+fincome_avg_division <- get_acs(table = "B19113", year = 2017, survey = "acs1", 
+                                geography = "division")
+fincome_avg_division <- fincome_avg_division %>% mutate(inclim_30 = 0.30 * estimate,
+                                                        inclim_80 = 0.80 * estimate)
+
+# match and fill in table
+# have HUDINCLIM_30 and HUDINCLIM_80 flags
+
+# same cross references
+  

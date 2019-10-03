@@ -19,7 +19,7 @@ library(srvyr)
 Load data:
 ```{r}
 # housing <- read.csv("ahs2017_hhsubset_r.csv")
-housing <- read.csv("ahs2017_flat_r.csv")
+housing <- read.csv("raw data/ahs2017_flat_r.csv")
 ```
 
 # Weighted exploratory analysis
