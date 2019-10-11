@@ -52,7 +52,7 @@ levels(housing$FEDSUB5)[1:3] <- c("Other renter", "Public housing", "Housing vou
 ## has 3 categories: Public housing, housing voucher, No rental assistance
 housing <- housing %>% 
   mutate(FEDSUB3 = ifelse(TENURE == "Owner", "No rental assistance", 
-                          ifelse( HUDSUB == "Public housing", "Public housing",
+                          ifelse(HUDSUB == "Public housing", "Public housing",
                                   ifelse(HUDSUB == "Housing voucher", "Housing voucher", 
                                          "No rental assistance"))))
 housing$FEDSUB3 <- as.factor(housing$FEDSUB3)
@@ -396,7 +396,7 @@ levels(prop.fedsub.byhouseholdspan) <- graph.span.lab
 
 # combine into one table
 info.fedsub.byhousehold <- rbind(prop.fedsub.byhouseholdrace,
-                                 prop.fedsub.byhouseholdrace[1,])
+                                 prop.fedsub.byhouseholdspan[1,])
 
 info.fedsub.byhousehold_long <- gather(info.fedsub.byhousehold, key,
                                        estimate, 2:6, factor_key = TRUE)
