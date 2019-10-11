@@ -17,7 +17,7 @@ library(dplyr)
 # Recoding variables:
 ```{r}
 # ahs_subset <- read.csv("ahs2017_hhsubset.csv")
-ahs_flat <- read.csv("raw data/ahs2017_hhsubset_flat.csv")
+ahs_flat <- read.csv("../raw data/ahs2017_hhsubset_flat.csv")
 ```
 
 # For Flat File:
@@ -526,7 +526,7 @@ ahs_flat$DBEVICWHERE <- revalue(ahs_flat$DBEVICWHERE, recode.dbevicwhere)
 
 ## Export as `ahs2017_flat_r`:
 ```{r}
-write.csv(ahs_flat, "raw data/ahs2017_flat_r.csv")
+write.csv(ahs_flat, "../raw data/ahs2017_flat_r.csv")
 ```
 
 Another approach to recoding household race variables (unsuccessful):

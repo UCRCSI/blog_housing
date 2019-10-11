@@ -16,7 +16,7 @@ library(tidyr)
 # Loading and cleaning data -----------------------------------------------
 
 ## Load data
-housing <- read.csv("raw data/ahs2017_flat_r.csv")
+housing <- read.csv("../raw data/ahs2017_flat_r.csv")
 
 ## Clean data
 # relabeling HH race and ethnicity levels
@@ -324,7 +324,7 @@ addWorksheet(wb = excelfile_graph1, sheetName = "by-def-household", gridLines = 
 writeData(wb = excelfile_graph1, sheet = "by-def-household", 
           x = info.reg.byhousehold, startCol = 1, startRow = 1)
 
-openxlsx::saveWorkbook(excelfile_graph1, "csv files/graph-1.xlsx",  overwrite = TRUE)
+openxlsx::saveWorkbook(excelfile_graph1, "csv files/graphs_v1/graph-1.xlsx",  overwrite = TRUE)
 
 
 # GRAPH 2: Federal income limits, by race -----------------------------------------
@@ -429,7 +429,7 @@ addWorksheet(wb = excelfile_graph2, sheetName = "by-def-household", gridLines = 
 writeData(wb = excelfile_graph2, sheet = "by-def-household", 
           x = info.fed.byhousehold, startCol = 1, startRow = 1)
 
-openxlsx::saveWorkbook(excelfile_graph2, "csv files/graph-2.xlsx",  overwrite = TRUE)
+openxlsx::saveWorkbook(excelfile_graph2, "csv files/graphs_v1/graph-2.xlsx",  overwrite = TRUE)
 
 # GRAPH 3: Federal housing assistance discrimination (regional) -------------------------------
 
@@ -536,7 +536,7 @@ addWorksheet(wb = excelfile_graph3, sheetName = "hud-30", gridLines = TRUE)
 writeData(wb = excelfile_graph3, sheet = "hud-30", 
           x = info.fedsub.byhh.hud30_long, startCol = 1, startRow = 1)
 
-openxlsx::saveWorkbook(excelfile_graph3, "csv files/graph-3.xlsx",  overwrite = TRUE)
+openxlsx::saveWorkbook(excelfile_graph3, "csv files/graphs_v1/graph-3.xlsx",  overwrite = TRUE)
 
 # GRAPH 4: Federal housing assistance discrimination (federal) -------------------------------
 
@@ -641,5 +641,5 @@ addWorksheet(wb = excelfile_graph4, sheetName = "hud-30", gridLines = TRUE)
 writeData(wb = excelfile_graph4, sheet = "hud-30", 
           x = info.fedsub.byhousehold.hud30_long, startCol = 1, startRow = 1)
 
-openxlsx::saveWorkbook(excelfile_graph4, "csv files/graph-4.xlsx",  overwrite = TRUE)
+openxlsx::saveWorkbook(excelfile_graph4, "csv files/graphs_v1/graph-4.xlsx",  overwrite = TRUE)
 

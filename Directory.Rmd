@@ -1,0 +1,83 @@
+---
+title: "Directory"
+author: "Alissa Ji"
+date: "10/11/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## analysis
+
+`ahs_subsetting.Rmd`
+* Subsets raw data AHS flat file `ahs2017n.csv` to include demographic, housing, and geographic variables of interest
+* Exports subsetted data as `/raw data/ahs2017_hhsubset_flat.csv`
+
+
+`ahs_recodes.Rmd`
+* Recodes and relabels subsetted data `ahs2017_hhsubset_flat.csv`
+* Creates new race variables: race and Latinx ethnicity of entire household, binary race variables to denote race of entire household, race variables with consolidated categories
+* Creates variable for housing assistance income limits based on poverty levels
+* Exports recoded subsetted data as `/raw data/ahs2017_flat_r.csv`
+
+
+`income-limits-housing-assistance_graphs_v2.R`
+* Produces tables that compare affordable housing need (as defined by national median family income) with the receival of federal housing assistance, by race (as defined by *HOUSEHOLD*)
+* Different combinations based on variations in (1) strictness of income limit definition (30% vs. 80%); (2) definitions of MFI (AHS vs. ACS)
+--> `graph-1-mfi`:Proportion of households 'in need' by racial group
+- Households that are considered 'in need' have family incomes below a certain threshold of the median family income, defined in two ways:
+- Sheet 'by-mfi-ahs': uses AHS calculated MFI
+- Sheet 'by-mfi-acs': uses ACS calculated MFI (higher than AHS)
+
+--> `graph-2-fedsub`: Proportion of households that receive federal housing subsidy, by race
+- 5 categories: Owner, Public housing, Housing voucher, Occupied without payment of rent (but not on federal housing assistance), Other renter
+
+--> `graph-3-mfi`: Of those in need, how many receive federal housing assistance?
+- 3 categories: Public housing, Housing voucher, No rental assistance
+* Universe: households by race (% for each racial category add up to 100%)
+* Calculates the % of households that are in need and receive federal housing assistance, by race
+- Calculates for different income limit definitions:
+- Sheet 'ahs-80': uses AHS calculated mfi, 80% limit
+- Sheet 'ahs-30': uses AHS calculated mfi, 30% limit
+- Sheet 'acs-80': uses ACS calculated mfi, 80% limit
+- Sheet 'acs-30': uses ACS calculated mfi, 30% limit
+
+
+`income-limits-housing-assistance_graphs.R`
+* Produces tables that compare affordable housing need (as defined by income limits) to receival of housing assistance, by race
+* Different combinations based on variations in (1) definitions of race (race of householder vs. entire household); (2) income limits (federal poverty level vs. regional median incomes); (3) strictness of income limit definition (30% vs. 80%)
+
+* Outputs the following graphs under `/csv files/graphs_v1`:
+--> `graph-1`:Proportion of households 'in need' by racial group
+* *REGIONAL* income limits
+- Households that are considered 'in need' have family incomes below a certain threshold of the median family income for a given Census division; REG30 denotes <30% region MFI while REG80 denotes <80% region MFI.
+- Sheet 'by-def-hh': defines race by head of householder
+- Sheet 'by-def-household': defines race by race of all members of the household.
+
+--> `graph-2`:Proportion of households 'in need' by racial group
+* *FEDERAL* poverty line income limits
+- Households that are considered 'in need' have household incomes below a certain threshold percentage of the federal poverty level; HUD30 denotes a household income as <30% of the poverty threshold while HUD80 denotes <80% of the poverty threshold.
+- Sheet 'by-def-hh': defines race by head of householder
+- Sheet 'by-def-household': defines race by race of all members of the household.
+
+--> `graph-3`: Of those in need, how many receive federal housing assistance?
+* Race defined by *HOUSEHOLDER*
+* Universe: all households (% for each racial category do not add up to 100%; add up to total % considered 'in need')
+* Calculates the % of households that are in need and receive federal housing assistance, by race
+- Calculates for different income limit definitions:
+- Sheet 'reg-80': uses income limit as 80% of regional mfi
+- Sheet 'reg-30': uses income limit as 30% of regional mfi
+- Sheet 'hud-80': uses income limit as 80% of federal poverty level
+- Sheet 'hud-30': uses income limit as 30% of federal poverty level
+
+--> `graph-4`: Of those in need, how many receive federal housing assistance?
+* Race defined by *HOUSEHOLD*
+* Universe: all households (% for each racial category do not add up to 100%; add up to total % considered 'in need')
+* Calculates the % of households that are in need and receive federal housing assistance, by race
+- Calculates for different income limit definitions:
+- Sheet 'reg-80': uses income limit as 80% of regional mfi
+- Sheet 'reg-30': uses income limit as 30% of regional mfi
+- Sheet 'hud-80': uses income limit as 80% of federal poverty level
+- Sheet 'hud-30': uses income limit as 30% of federal poverty level
