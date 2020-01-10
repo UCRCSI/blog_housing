@@ -314,11 +314,32 @@ recode.hhmar <- c("'1'" = "Married, spouse present",
                   "'-6'" = NA)
 ahs_flat$HHMAR <- revalue(ahs_flat$HHMAR, recode.hhmar)
 
+# # HHCITSHP2
+# ahs_flat <- ahs_flat %>%
+#   mutate(HHCITSHP2 = ifelse(HHCITSHP %in% c("'1'", "'2'", "'3'", "'4'"),
+#                             "US citizen", ifelse(HHCITSHP == "'5'", "Not US citizen", NA)))
+# ahs_flat$HHCITSHP2 <- as.factor(ahs_flat$HHCITSHP2)
+# 
+# # HHCITSHP3
+# # levels(ahs_flat$HHCITSHP)
+# recode.hhcitshp3 <- c("'1'" = "US citizen, native",
+#                       "'2'" = "US citizen, native",
+#                       "'3'" = "US citizen, native",
+#                       "'4'" = "US citizen, naturalization",
+#                       "'5'" = "Not US citizen",
+#                       "'-6'" = NA)
+# ahs_flat$HHCITSHP3 <- revalue(ahs_flat$HHCITSHP, recode.hhcitshp3)
+# ahs_flat$HHCITSHP3 <- as.factor(ahs_flat$HHCITSHP3)
+
 # HHCITSHP
 # levels(ahs_flat$HHCITSHP)
-ahs_flat <- ahs_flat %>% 
-  mutate(HHCITSHP = ifelse(HHCITSHP %in% c("'1'", "'2'", "'3'", "'4'"), 
-                            "US citizen", ifelse(HHCITSHP == "'5'", "Not US citizen", NA)))
+recode.hhcitshp <- c("'1'" = "Native, born in US",
+                     "'2'" = "Native, born in Puerto Rico or US outlying area",
+                     "'3'" = "Native born abroad of US parent(s)",
+                     "'4'" = "Foreign born, US citizen by naturalization",
+                     "'5'" = "Foreign born, not a US citizen",
+                     "'-6'" = NA)
+ahs_flat$HHCITSHP <- revalue(ahs_flat$HHCITSHP, recode.hhcitshp)
 ahs_flat$HHCITSHP <- as.factor(ahs_flat$HHCITSHP)
 
 # HHNATVTY
@@ -327,7 +348,36 @@ ahs_flat <- ahs_flat %>%
   mutate(HHNATVTY_US = ifelse(HHNATVTY == "'057'", "US", NA))
 ahs_flat$HHNATVTY_US <- as.factor(ahs_flat$HHNATVTY_US)
 
-# HHGRAD
+# # HHGRAD6
+# # levels(ahs_flat$HHGRAD)
+# ahs_flat <- ahs_flat %>% 
+#   mutate(HHGRAD6 = ifelse(HHGRAD %in% c("'31'","'32'", "'33'", "'34'"), "1_< HS",
+#                           ifelse(HHGRAD %in% c("'35'","'36'", "'37'", "'38'"), "2_HS, no degree",
+#                                  ifelse(HHGRAD %in% c("'39'","'40'"), "3_HS diploma or equivalent",
+#                                         ifelse(HHGRAD %in% c("'41'","'42'", "'43'"), "4_Associate degree or vocational", 
+#                                                ifelse(HHGRAD == "'44'", "5_Bachelor's degree",
+#                                                       ifelse(HHGRAD %in% c("'45'","'46'", "'47'"), "6_Graduate degree", NA)))))))
+# ahs_flat$HHGRAD6 <- as.factor(ahs_flat$HHGRAD6)
+
+
+recode.division <- c("'31'" = "New England",
+                     "'2'" = "Middle Atlantic",
+                     "'3'" = "East North Central",
+                     "'4'" = "West North Central",
+                     "'5'" = "South Atlantic",
+                     "'6'" = "East South Central",
+                     "'7'" = "West South Central",
+                     "'8'" = "Mountain",
+                     "'9'" = "Pacific")
+
+
+# < HIGH SCHOOL
+# SOME HIGH SCHOOL, NO DIPLOMA
+# high school graduate, diploma, or equivalent
+# some college, no degree
+# associate/trade/technical
+# bachelor's
+# graduate or professional
 ```
  
 ## Geography and household demographics variables:

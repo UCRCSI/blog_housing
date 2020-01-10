@@ -23,6 +23,34 @@ knitr::opts_chunk$set(echo = TRUE)
 * Exports recoded subsetted data as `/raw data/ahs2017_flat_r.csv`
 
 
+`income-limits-housing-assistance_graphs_v4.R`
+* Produces tables that compare affordable housing need (as defined by national median family income) with the receival of federal housing assistance, by race (as defined by *HOUSEHOLD*)
+* Different combinations based on variations in strictness of income limit definition: VLI (30%) vs. ELI: (<50%) vs. LI (<80%); (2), MFI as defined by (national *ACS* estimate)
+* Includes CI estimates for signficance tests
+--> `graph-1-mfi`: Proportion of households in each racial group 'in need', as defined by various poverty brackets; *Uneven stacked bar graph*
+- Households that are considered 'in need' have family incomes below a certain threshold of the median family income, defined in three income brackets: VLI (<30% MFI), ELI (30-50% MFI), and LI (50-80% MFI)
+* Sheets:
+- Sheet 'by-mfi-acs': estimates
+- Sheet 'CI-by-mfi-acs': CI bounds
+
+--> `graph-2-fedsub`: Who is getting federal housing assistance?
+- Proportion of households that receive federal housing subsidy, by race
+- 5 categories: Owner, Public housing, Housing voucher, Occupied without payment of rent (but not on federal housing assistance), Other renter
+* Sheets:
+- Sheet 'fedsub-byrace': estimates
+- Sheet 'CI-fedsub-byrace': CI bounds
+
+--> `graph-3-mfi`: Of those in need, how many receive federal housing assistance?
+- 3 categories: Public housing, Housing voucher, No rental assistance
+* Universe: households by race (% for each racial category add up to 100%)
+* Calculates the % of households that are in need and receive federal housing assistance, by race
+- Calculates for different income limit definitions: 
+- variable `estimate_80`: uses ACS calculated mfi, 80% limit (LI)
+- variable `estimate_30`: uses ACS calculated mfi, 30% limit (ELI)
+* Sheets:
+- Sheet 'fedsub-inc-byrace': estimates
+- Sheet 'CI-fedsub-inc-byrace': CI bounds
+
 `income-limits-housing-assistance_graphs_v2.R`
 * Produces tables that compare affordable housing need (as defined by national median family income) with the receival of federal housing assistance, by race (as defined by *HOUSEHOLD*)
 * Different combinations based on variations in (1) strictness of income limit definition (30% vs. 80%); (2) definitions of MFI (AHS vs. ACS)
