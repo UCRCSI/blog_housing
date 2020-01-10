@@ -758,20 +758,32 @@ writeData(wb = excelfile_graph2, sheet = "CI-fedsub-byhhcitshp",
 
 prop.fedsub.race.sex <- threeway_prop(housing_weighted, "HOUSEHOLDRACE",
                                       "HHSEX", "FEDSUB5")
+prop.fedsub.span.sex <- threeway_prop(housing_weighted, "HOUSEHOLDSPAN",
+                                      "HHSEX", "FEDSUB5")
 
+## relabeling and combining
 levels(prop.fedsub.race.sex$group_1) <- graph.race.lab
+levels(prop.fedsub.span.sex$group_1) <- graph.span.lab
 
 # combine into one table
-info.fedsub.race.sex <- rbind(prop.fedsub.race.sex[,1:7])
+info.fedsub.race.sex <- rbind(prop.fedsub.race.sex[,1:7],
+                              prop.fedsub.span.sex[1:2,1:7])
+prop.fedsub.race.sex <- rbind(prop.fedsub.race.sex,
+                              prop.fedsub.span.sex[1:2,])
+
 
 info.fedsub.race.sex_long <- gather(info.fedsub.race.sex, key,
-                                      estimate, 3:7, factor_key = TRUE)
+                                    estimate, 3:7, factor_key = TRUE)
 
 # setting `key_order`
 info.fedsub.race.sex_long <- 
   info.fedsub.race.sex_long[order(info.fedsub.race.sex_long$key,
-                                    info.fedsub.race.sex_long$estimate),]
-n.levels <- (nlevels(housing$HOUSEHOLDRACE)-1) * (nlevels(housing$HHSEX)-1)
+                                  info.fedsub.race.sex_long$estimate),]
+# info.fedsub.race.cit_long <- 
+#   info.fedsub.race.cit_long[order(info.fedsub.race.cit_long$group_1,
+#                                   info.fedsub.race.cit_long$group_2,
+#                                   info.fedsub.race.cit_long$key),]
+n.levels <- nlevels(housing$HOUSEHOLDRACE) * (nlevels(housing$HHSEX)-1)
 info.fedsub.race.sex_long$key_order <- n.levels:1
 
 ## SHEET 2: with CIs
@@ -806,11 +818,19 @@ writeData(wb = excelfile_graph2, sheet = "CI-fedsub-byrace+sex",
 
 prop.fedsub.race.cit <- threeway_prop(housing_weighted, "HOUSEHOLDRACE",
                                       "HHCITSHP3", "FEDSUB5")
+prop.fedsub.span.cit <- threeway_prop(housing_weighted, "HOUSEHOLDSPAN",
+                                      "HHCITSHP3", "FEDSUB5")
 
+## relabeling and combining
 levels(prop.fedsub.race.cit$group_1) <- graph.race.lab
+levels(prop.fedsub.span.cit$group_1) <- graph.span.lab
 
 # combine into one table
-info.fedsub.race.cit <- rbind(prop.fedsub.race.cit[,1:7])
+info.fedsub.race.cit <- rbind(prop.fedsub.race.cit[,1:7],
+                              prop.fedsub.span.cit[1:3,1:7])
+prop.fedsub.race.cit <- rbind(prop.fedsub.race.cit,
+                              prop.fedsub.span.cit[1:3,])
+
 
 info.fedsub.race.cit_long <- gather(info.fedsub.race.cit, key,
                                     estimate, 3:7, factor_key = TRUE)
@@ -823,7 +843,7 @@ info.fedsub.race.cit_long <-
 #   info.fedsub.race.cit_long[order(info.fedsub.race.cit_long$group_1,
 #                                   info.fedsub.race.cit_long$group_2,
 #                                   info.fedsub.race.cit_long$key),]
-n.levels <- (nlevels(housing$HOUSEHOLDRACE)-1) * (nlevels(housing$HHCITSHP3)-1)
+n.levels <- nlevels(housing$HOUSEHOLDRACE) * (nlevels(housing$HHCITSHP3)-1)
 info.fedsub.race.cit_long$key_order <- n.levels:1
 
 ## SHEET 2: with CIs
@@ -861,11 +881,19 @@ twoway_prop(housing_weighted, "HHGRAD6", "FEDSUB5")
 
 prop.fedsub.race.educ <- threeway_prop(housing_weighted, "HOUSEHOLDRACE",
                                       "HHGRAD6", "FEDSUB5")
+prop.fedsub.span.educ <- threeway_prop(housing_weighted, "HOUSEHOLDSPAN",
+                                      "HHGRAD6", "FEDSUB5")
 
+## relabeling and combining
 levels(prop.fedsub.race.educ$group_1) <- graph.race.lab
+levels(prop.fedsub.span.educ$group_1) <- graph.span.lab
 
 # combine into one table
-info.fedsub.race.educ <- rbind(prop.fedsub.race.educ[,1:7])
+info.fedsub.race.educ <- rbind(prop.fedsub.race.educ[,1:7],
+                              prop.fedsub.span.educ[1:6,1:7])
+prop.fedsub.race.educ <- rbind(prop.fedsub.race.educ,
+                              prop.fedsub.span.educ[1:6,])
+
 
 info.fedsub.race.educ_long <- gather(info.fedsub.race.educ, key,
                                     estimate, 3:7, factor_key = TRUE)
@@ -878,7 +906,7 @@ info.fedsub.race.educ_long <-
 #   info.fedsub.race.cit_long[order(info.fedsub.race.cit_long$group_1,
 #                                   info.fedsub.race.cit_long$group_2,
 #                                   info.fedsub.race.cit_long$key),]
-n.levels <- (nlevels(housing$HOUSEHOLDRACE)-1) * (nlevels(housing$HHGRAD6)-1)
+n.levels <- nlevels(housing$HOUSEHOLDRACE) * (nlevels(housing$HHGRAD6)-1)
 info.fedsub.race.educ_long$key_order <- n.levels:1
 
 ## SHEET 2: with CIs
@@ -1042,15 +1070,20 @@ writeData(wb = excelfile_graph3, sheet = "CI-fedsub-inc-byrace",
 
 # (B) BY RACE & GENDER ----------------------------------------------------
 
+## ORIGINAL
 ## 80% income limit - ACS
 fedsub.byracesex.acs80 <- threeway_prop_criteria(housing_weighted, "HOUSEHOLDRACE",
                                                      "HHSEX", "FEDSUB3", criteria_acs_80)
-fedsub.byracesex.acs80$key <- fedsub.byracesex.acs80$key <- "<80%"
+fedsub.byspansex.acs80 <- threeway_prop_criteria(housing_weighted, "HOUSEHOLDSPAN",
+                                                 "HHSEX", "FEDSUB3", criteria_acs_80)
+fedsub.byracesex.acs80$key <- fedsub.byspansex.acs80$key <- "<80%"
 
 ## 30% income limit - ACS
 fedsub.byracesex.acs30 <- threeway_prop_criteria(housing_weighted, "HOUSEHOLDRACE",
                                                  "HHSEX", "FEDSUB3", criteria_acs_30)
-fedsub.byracesex.acs30$key <- fedsub.byracesex.acs30$key <- "<30%"
+fedsub.byspansex.acs30 <- threeway_prop_criteria(housing_weighted, "HOUSEHOLDSPAN",
+                                                 "HHSEX", "FEDSUB3", criteria_acs_30)
+fedsub.byracesex.acs30$key <- fedsub.byspansex.acs30$key <- "<30%"
 
 ## relabeling and combining
 # colnames(fedsub.byhouseholdrace.acs80)[1] <- colnames(fedsub.byhouseholdrace.acs30)[1] <- 
@@ -1058,6 +1091,14 @@ fedsub.byracesex.acs30$key <- fedsub.byracesex.acs30$key <- "<30%"
 
 levels(fedsub.byracesex.acs80$group_1) <- 
   levels(fedsub.byracesex.acs30$group_1) <- graph.race.lab
+
+levels(fedsub.byspansex.acs80$group_1) <- 
+  levels(fedsub.byspansex.acs30$group_1) <- graph.span.lab
+
+fedsub.byracesex.acs80 <- rbind(fedsub.byracesex.acs80,
+                                fedsub.byspansex.acs80[1:2,])
+fedsub.byracesex.acs30 <- rbind(fedsub.byracesex.acs30,
+                                fedsub.byspansex.acs30[1:2,])
 
 info.fedsub.subset.acs80 <- fedsub.byracesex.acs80[,c(1:5)]
 info.fedsub.subset.acs30 <- fedsub.byracesex.acs30[,c(1:5)]
@@ -1071,7 +1112,7 @@ info.fedsub.subset.acs30_long <- gather(info.fedsub.subset.acs30, key,
 info.fedsub.subset.acs80_long <- 
   info.fedsub.subset.acs80_long[order(info.fedsub.subset.acs80_long$key,
                                       info.fedsub.subset.acs80_long$estimate),]
-n.levels <- (nlevels(housing$HOUSEHOLDRACE)-1) * (nlevels(housing$HHSEX)-1)
+n.levels <- nlevels(housing$HOUSEHOLDRACE) * (nlevels(housing$HHSEX)-1)
 info.fedsub.subset.acs80_long$key_order_80 <- n.levels:1
 
 info.fedsub.subset.acs30_long <- 
@@ -1145,19 +1186,27 @@ writeData(wb = excelfile_graph3, sheet = "CI-fedsub-inc-byrace+sex",
 ## 80% income limit - ACS
 fedsub.byracecit.acs80 <- threeway_prop_criteria(housing_weighted, "HOUSEHOLDRACE",
                                                  "HHCITSHP3", "FEDSUB3", criteria_acs_80)
-fedsub.byracecit.acs80$key <- fedsub.byracecit.acs80$key <- "<80%"
+fedsub.byspancit.acs80 <- threeway_prop_criteria(housing_weighted, "HOUSEHOLDSPAN",
+                                                 "HHCITSHP3", "FEDSUB3", criteria_acs_80)
+fedsub.byracecit.acs80$key <- fedsub.byspancit.acs80$key <- "<80%"
 
 ## 30% income limit - ACS
 fedsub.byracecit.acs30 <- threeway_prop_criteria(housing_weighted, "HOUSEHOLDRACE",
                                                  "HHCITSHP3", "FEDSUB3", criteria_acs_30)
-fedsub.byracecit.acs30$key <- fedsub.byracecit.acs30$key <- "<30%"
-
-## relabeling and combining
-# colnames(fedsub.byhouseholdrace.acs80)[1] <- colnames(fedsub.byhouseholdrace.acs30)[1] <- 
-#   colnames(fedsub.byhouseholdspan.acs80)[1] <- colnames(fedsub.byhouseholdspan.acs30)[1] <-"group"
+fedsub.byspancit.acs30 <- threeway_prop_criteria(housing_weighted, "HOUSEHOLDSPAN",
+                                                 "HHCITSHP3", "FEDSUB3", criteria_acs_30)
+fedsub.byracecit.acs30$key <- fedsub.byspancit.acs30$key <- "<30%"
 
 levels(fedsub.byracecit.acs80$group_1) <- 
   levels(fedsub.byracecit.acs30$group_1) <- graph.race.lab
+
+levels(fedsub.byspancit.acs80$group_1) <- 
+  levels(fedsub.byspancit.acs30$group_1) <- graph.span.lab
+
+fedsub.byracecit.acs80 <- rbind(fedsub.byracecit.acs80,
+                                fedsub.byspancit.acs80[1:3,])
+fedsub.byracecit.acs30 <- rbind(fedsub.byracecit.acs30,
+                                fedsub.byspancit.acs30[1:3,])
 
 info.fedsub.subset.acs80 <- fedsub.byracecit.acs80[,c(1:5)]
 info.fedsub.subset.acs30 <- fedsub.byracecit.acs30[,c(1:5)]
@@ -1171,7 +1220,7 @@ info.fedsub.subset.acs30_long <- gather(info.fedsub.subset.acs30, key,
 info.fedsub.subset.acs80_long <- 
   info.fedsub.subset.acs80_long[order(info.fedsub.subset.acs80_long$key,
                                       info.fedsub.subset.acs80_long$estimate),]
-n.levels <- (nlevels(housing$HOUSEHOLDRACE)-1) * (nlevels(housing$HHCITSHP3)-1)
+n.levels <- nlevels(housing$HOUSEHOLDRACE) * (nlevels(housing$HHCITSHP3)-1)
 info.fedsub.subset.acs80_long$key_order_80 <- n.levels:1
 
 info.fedsub.subset.acs30_long <- 
@@ -1245,15 +1294,19 @@ writeData(wb = excelfile_graph3, sheet = "CI-fedsub-inc-byrace+cit",
 ## 80% income limit - ACS
 fedsub.byraceeduc.acs80 <- threeway_prop_criteria(housing_weighted, "HOUSEHOLDRACE",
                                                  "HHGRAD6", "FEDSUB3", criteria_acs_80)
+fedsub.byspaneduc.acs80 <- threeway_prop_criteria(housing_weighted, "HOUSEHOLDSPAN",
+                                                  "HHGRAD6", "FEDSUB3", criteria_acs_80)
 new.row <- data.frame(group_1 = "NHPI", group_2 ="6_Graduate degree", stringsAsFactors=F)
 fedsub.byraceeduc.acs80 <- rbind.fill(fedsub.byraceeduc.acs80, new.row)
-fedsub.byraceeduc.acs80$key <- fedsub.byracecit.acs80$key <- "<80%"
+fedsub.byraceeduc.acs80$key <- fedsub.byspaneduc.acs80$key <- "<80%"
 
 ## 30% income limit - ACS
 fedsub.byraceeduc.acs30 <- threeway_prop_criteria(housing_weighted, "HOUSEHOLDRACE",
                                                  "HHGRAD6", "FEDSUB3", criteria_acs_30)
+fedsub.byspaneduc.acs30 <- threeway_prop_criteria(housing_weighted, "HOUSEHOLDSPAN",
+                                                  "HHGRAD6", "FEDSUB3", criteria_acs_30)
 fedsub.byraceeduc.acs30 <- rbind.fill(fedsub.byraceeduc.acs30, new.row)
-fedsub.byraceeduc.acs30$key <- fedsub.byraceeduc.acs30$key <- "<30%"
+fedsub.byraceeduc.acs30$key <- fedsub.byspaneduc.acs30$key <- "<30%"
 
 ## relabeling and combining
 # colnames(fedsub.byhouseholdrace.acs80)[1] <- colnames(fedsub.byhouseholdrace.acs30)[1] <- 
@@ -1267,6 +1320,14 @@ fedsub.byraceeduc.acs30$group_2 <- as.factor(fedsub.byraceeduc.acs30$group_2)
 levels(fedsub.byraceeduc.acs80$group_1) <- 
   levels(fedsub.byraceeduc.acs30$group_1) <- graph.race.lab
 
+levels(fedsub.byspaneduc.acs80$group_1) <- 
+  levels(fedsub.byspaneduc.acs30$group_1) <- graph.span.lab
+
+fedsub.byraceeduc.acs80 <- rbind(fedsub.byraceeduc.acs80,
+                                fedsub.byspaneduc.acs80[1:6,])
+fedsub.byraceeduc.acs30 <- rbind(fedsub.byraceeduc.acs30,
+                                fedsub.byspaneduc.acs30[1:6,])
+
 info.fedsub.subset.acs80 <- fedsub.byraceeduc.acs80[,c(1:5)]
 info.fedsub.subset.acs30 <- fedsub.byraceeduc.acs30[,c(1:5)]
 
@@ -1279,7 +1340,7 @@ info.fedsub.subset.acs30_long <- gather(info.fedsub.subset.acs30, key,
 info.fedsub.subset.acs80_long <- 
   info.fedsub.subset.acs80_long[order(info.fedsub.subset.acs80_long$key,
                                       info.fedsub.subset.acs80_long$estimate),]
-n.levels <- (nlevels(housing$HOUSEHOLDRACE)-1) * (nlevels(housing$HHGRAD6)-1)
+n.levels <- nlevels(housing$HOUSEHOLDRACE) * (nlevels(housing$HHGRAD6)-1)
 info.fedsub.subset.acs80_long$key_order_80 <- n.levels:1
 
 info.fedsub.subset.acs30_long <- 
