@@ -348,16 +348,27 @@ ahs_flat <- ahs_flat %>%
   mutate(HHNATVTY_US = ifelse(HHNATVTY == "'057'", "US", NA))
 ahs_flat$HHNATVTY_US <- as.factor(ahs_flat$HHNATVTY_US)
 
-# # HHGRAD6
-# # levels(ahs_flat$HHGRAD)
-# ahs_flat <- ahs_flat %>% 
-#   mutate(HHGRAD6 = ifelse(HHGRAD %in% c("'31'","'32'", "'33'", "'34'"), "1_< HS",
-#                           ifelse(HHGRAD %in% c("'35'","'36'", "'37'", "'38'"), "2_HS, no degree",
-#                                  ifelse(HHGRAD %in% c("'39'","'40'"), "3_HS diploma or equivalent",
-#                                         ifelse(HHGRAD %in% c("'41'","'42'", "'43'"), "4_Associate degree or vocational", 
-#                                                ifelse(HHGRAD == "'44'", "5_Bachelor's degree",
-#                                                       ifelse(HHGRAD %in% c("'45'","'46'", "'47'"), "6_Graduate degree", NA)))))))
-# ahs_flat$HHGRAD6 <- as.factor(ahs_flat$HHGRAD6)
+# HHGRAD6
+# levels(ahs_flat$HHGRAD)
+# levels(ahs_flat$HHMAR)
+recode.hhmar <- c("'1'" = "Married, spouse present",
+                  "'2'" = "Married, spouse absent",
+                  "'3'" = "Widowed",
+                  "'4'" = "Divorced",
+                  "'5'" = "Separated",
+                  "'6'" = "Never married",
+                  "'-6'" = NA)
+ahs_flat <- ahs_flat %>%
+  mutate(HHGRAD = ifelse(HHGRAD %in% c("'31'","'32'", "'33'", "'34'"), "1_< HS",
+                          ifelse(HHGRAD %in% c("'35'","'36'", "'37'", "'38'"), "2_HS, no degree",
+                                 ifelse(HHGRAD %in% c("'39'","'40'"), "3_HS diploma or equivalent",
+                                        ifelse(HHGRAD %in% c("'41'","'42'", "'43'"), "4_Associate degree or vocational",
+                                               ifelse(HHGRAD == "'44'", "5_Bachelor's degree",
+                                                      ifelse(HHGRAD %in% c("'45'","'46'", "'47'"), "6_Graduate degree", NA)))))))
+ahs_flat$HHGRAD6 <- as.factor(ahs_flat$HHGRAD6)
+ahs_flat$HHGRAD <- revalue(ahs_flat$HHGRAD, recode.hhgrad)
+ahs_flat$HHGRAD <- as.factor(ahs_flat$HHGRAD)
+
 
 
 recode.division <- c("'31'" = "New England",

@@ -74,8 +74,9 @@ housing <- housing %>%
                                           "Not US citizen", NA))))
 housing$HHCITSHP3 <- as.factor(housing$HHCITSHP3)
 
-# HHGRAD6
+# HHGRAD4
 # levels(ahs_flat$HHGRAD)
+housing$hhgrad <- as.numeric(housing$hhgrad)
 housing <- housing %>% 
   mutate(HHGRAD6 = ifelse(HHGRAD %in% c("'31'","'32'", "'33'", "'34'"), "1_< HS",
                           ifelse(HHGRAD %in% c("'35'","'36'", "'37'", "'38'"), "2_HS, no degree",
