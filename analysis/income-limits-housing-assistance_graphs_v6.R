@@ -18,6 +18,9 @@ library(srvyr)
 
 # Loading and cleaning data -----------------------------------------------
 
+## set working directory
+# setwd("~/blog_housing/analysis")
+
 ## Load data
 housing <- read.csv("../raw data/ahs2017_flat_r.csv")
 
@@ -111,9 +114,117 @@ housing_weighted <- housing %>% as_survey_design(ids = 1, weight = WEIGHT)
 
 
 
+# Creating family income limits ----------------------------
+
+## Defining HUD (ACS) Median Family Income
+# acs.mfi <- 68000
+# acs.mfi.80 <- 0.80 * acs.mfi
+# acs.mfi.50 <- 0.50 * acs.mfi
+# acs.mfi.30 <- 0.30 * acs.mfi
+# 
+# housing <- housing %>% mutate(ACSMFI_80_FLAG = as.factor(ifelse(FINCP < acs.mfi.80, 1, 0)),
+#                               ACSMFI_50_FLAG = as.factor(ifelse(FINCP < acs.mfi.50, 1, 0)),
+#                               ACSMFI_30_FLAG = as.factor(ifelse(FINCP < acs.mfi.30, 1, 0)))
+
+# ## Defining ACS Regional Median Family Incomes
+# sample-info
+finc.byrace <- apply_by_defs_two(housing_weighted, "twoway_median",
+                                 race.label, race.defs, "FINCP")
+finc.byspan <- apply_by_defs_two(housing_weighted, "twoway_median",
+                                 span.label, span.defs, "FINCP")
+
+# reading in ACS median family income tables by geography
+census_api_key("11654cc6c6ee4ff4791e54461c9b48da31c5ff68", install = TRUE, overwrite = TRUE)
+fincome_avg_division <- get_acs(table = "B19113", year = 2017, survey = "acs1",
+                                cache_table = TRUE,
+                                geography = "division")
+
+# WHEN THE CENSUS API ISN'T WORKING ON YOUR WIFI
+# fincome_avg_division <- data.frame("NAME" = c("New England Division", "Middle Atlantic Division",
+#                                               "East North Central Division", "West North Central Division",
+#                                               "South Atlantic Division", "East South Central Division",
+#                                               "West South Central Division", "Mountain Division",
+#                                               "Pacific Division"), 
+#                                    "estimate" = c(91189, 81703, 72215, 75430, 70430, 
+#                                                   61255, 66541, 72080, 81910))
+fincome_avg_division$NAME <- as.character(fincome_avg_division$NAME)
+fincome_avg_division <- 
+  fincome_avg_division %>% 
+  select(-c(GEOID, variable, moe)) %>% 
+  mutate(DIVISION = substr(fincome_avg_division$NAME, 1,
+                           nchar(fincome_avg_division$NAME)-9),
+         inclim_30 = 0.30 * estimate,
+         inclim_50 = 0.50 * estimate,
+         inclim_80 = 0.80 * estimate)
+# merging housing data with ACS median family income data
+housing <- merge(housing, fincome_avg_division[,c("DIVISION", "inclim_80", 
+                                                  "inclim_50", "inclim_30")],
+                 by = "DIVISION", all.x = TRUE)
+housing <- housing %>% mutate(ACSREG_80_FLAG = as.factor(ifelse(FINCP < inclim_80, 1, 0)),
+                              ACSREG_50_FLAG = as.factor(ifelse(FINCP < inclim_50, 1, 0)),
+                              ACSREG_30_FLAG = as.factor(ifelse(FINCP < inclim_30, 1, 0)))
+# 
+# # comparing HUD federal level income limits with regional income limits (ACS data)
+# ## most lenient standard
+summary(housing$ACSMFI_80_FLAG)
+summary(housing$ACSREG_80_FLAG)
+# 
+# ## strictest standard
+summary(housing$ACSMFI_30_FLAG)
+summary(housing$ACSREG_30_FLAG)
+
+
+# Recleaning and redefining data with new variables ----------------------------
+var.flag <- colnames(housing)[grepl("FLAG$", names(housing))]
+
+col_factor <- colnames(housing)[!(colnames(housing) %in% 
+                                    c(var.races, var.span, var.num, var.rating,
+                                      var.flag, var.pov, "X.1", "X", "HHAGE", 
+                                      "HINCP", "FINCP", "TOTHCAMT", "WEIGHT",
+                                      "estimate", "inclim_80", "inclim_50", 
+                                      "inclim_30"))]
+
+housing[,col_factor] <- lapply(housing[,col_factor], 
+                               function(x) fct_explicit_na(x)) %>% as.data.frame
+
+# if error, check which columsn not factor
+## sapply(housing[,col_factor], class)
+
+# Weighting data 
+housing_weighted <- housing %>% as_survey_design(ids = 1, weight = WEIGHT)
+
+
+# Setup and definitions ---------------------------------------------------
+
+## Setting up Excel workbooks
+excelfile_graph1 <- createWorkbook()
+excelfile_graph2 <- createWorkbook()
+# excelfile_graph2b <- createWorkbook()
+excelfile_graph3 <- createWorkbook()
+
+## Race definitions and labels
+race.defs <- c("HOUSEHOLDRACE", "HHRACE3")
+race.label <- "Household race"
+
+span.defs <- c("HOUSEHOLDSPAN", "HHSPAN2")
+span.label <- "Household span"
+
+raceeth.defs <- c("HOUSEHOLDRACEETH", "RACEETH")
+raceeth.label <- "Household raceeth"
+
+graph.race.lab <- c("AIAN alone", "Asian alone", "Black or African American alone", 
+                    "NHPI alone", "White alone (Non-Hispanic)", "(Missing)")
+graph.span.lab <- c("Hispanic of any race", "Not Hispanic of any race", "(Missing)")
+
+# Select race variable ## EDIT
+race.var <- race.defs[2]
+span.var <- span.defs[2]
+
+# setting CI level
+tstat <- 1.96
+
 # Defining functions ------------------------------------------------------
 
-race.def
 # generates table of weighted totals by a grouping variable `group_var`
 totals_by_variable <- function(df, group_var) {
   group_var <- sym(group_var)
@@ -144,7 +255,7 @@ twoway_prop <- function(df, group_var1, group_var2) {
               n = survey_total()) -> tmp
   tmp <- 
     tmp %>% mutate(CI_lb = prop - tstat * prop_se,
-                 CI_ub = prop + tstat * prop_se)
+                   CI_ub = prop + tstat * prop_se)
   tmp2 <- dcast(tmp, eval(parse(text = group_var1)) ~ 
                   eval(parse(text = group_var2)), value.var = "prop")
   tmp3 <- dcast(tmp, eval(parse(text = group_var1)) ~ 
@@ -163,17 +274,17 @@ twoway_prop <- function(df, group_var1, group_var2) {
     colnames(tmp5)[1] <- colnames(tmp6)[1] <- "group"
   n.col <- ncol(tmp2)
   final <- Reduce(function(x, y) merge(x, y, by = "group"), 
-         list(tmp2, tmp4, tmp3, tmp5, tmp6))
+                  list(tmp2, tmp4, tmp3, tmp5, tmp6))
   return (final)  
 }
 
 housing_weighted %>% filter(!!sym(race.var) != "(Missing)" & 
-                      !(is.na((!!sym(race.var)))) & 
-                     (HHCITSHP != "(Missing)") & 
-                        !(is.na(HHCITSHP)) &
-                     FEDSUB3 != "(Missing)" & 
-                     !(is.na(FEDSUB3))) %>% 
-  group_by(!!sym(race.var), HHCITSHP, FEDSUB3) %>% 
+                              !(is.na((!!sym(race.var)))) & 
+                              (HHCITSHP != "(Missing)") & 
+                              !(is.na(HHCITSHP)) &
+                              FEDSUB3 != "(Missing)" & 
+                              !(is.na(FEDSUB4))) %>% 
+  group_by(!!sym(race.var), HHCITSHP, FEDSUB4) %>% 
   summarize(prop = survey_mean(),
             n = survey_total()) -> tmp
 tmp <- 
@@ -281,7 +392,7 @@ twoway_prop_criteria <- function(df, group_var1, group_var2, criteria) {
     tmp %>% mutate(CI_lb = prop - tstat * prop_se,
                    CI_ub = prop + tstat * prop_se)
   tmp2 <- dcast(tmp, eval(parse(text = group_var1)) ~ 
-                   eval(parse(text = group_var2)), value.var = "prop")
+                  eval(parse(text = group_var2)), value.var = "prop")
   tmp3 <- dcast(tmp, eval(parse(text = group_var1)) ~ 
                   eval(parse(text = group_var2)), value.var = "prop_se")
   colnames(tmp3) <- paste(colnames(tmp2), "_se", sep = "")
@@ -312,7 +423,7 @@ threeway_prop_criteria <- function(df, group_var1, group_var2, key, criteria) {
   
   df %>% filter(eval(parse(text=criteria)) & 
                   ((!!sym.group_var1) != "(Missing)" & 
-                   !(is.na((!!sym.group_var1)))) & 
+                     !(is.na((!!sym.group_var1)))) & 
                   ((!!sym.group_var2) != "(Missing)" & 
                      !(is.na((!!sym.group_var2)))) & 
                   ((!!sym.key) != "(Missing)" & 
@@ -359,116 +470,6 @@ apply_by_defs_two_criteria <- function(df, fun.name, dem.name, def.var,
   tmp <- do.call("rbind", ls)
   return(tmp)
 }
-
-# Setup and definitions ---------------------------------------------------
-
-## Setting up Excel workbooks
-excelfile_graph1 <- createWorkbook()
-excelfile_graph2 <- createWorkbook()
-# excelfile_graph2b <- createWorkbook()
-excelfile_graph3 <- createWorkbook()
-
-## Race definitions and labels
-race.defs <- c("HOUSEHOLDRACE", "HHRACE3")
-race.label <- "Household race"
-
-span.defs <- c("HOUSEHOLDSPAN", "HHSPAN2")
-span.label <- "Household span"
-
-raceeth.defs <- c("HOUSEHOLDRACEETH", "RACEETH")
-raceeth.label <- "Household raceeth"
-
-graph.race.lab <- c("AIAN alone", "Asian alone", "Black or African American alone", 
-                    "NHPI alone", "White alone (Non-Hispanic)", "(Missing)")
-graph.span.lab <- c("Hispanic of any race", "Not Hispanic of any race", "(Missing)")
-
-# Select race variable ## EDIT
-race.var <- race.defs[2]
-span.var <- span.defs[2]
-
-# setting CI level
-tstat <- 1.96
-
-# Creating family income limits ----------------------------
-
-## Defining HUD (ACS) Median Family Income
-# acs.mfi <- 68000
-# acs.mfi.80 <- 0.80 * acs.mfi
-# acs.mfi.50 <- 0.50 * acs.mfi
-# acs.mfi.30 <- 0.30 * acs.mfi
-# 
-# housing <- housing %>% mutate(ACSMFI_80_FLAG = as.factor(ifelse(FINCP < acs.mfi.80, 1, 0)),
-#                               ACSMFI_50_FLAG = as.factor(ifelse(FINCP < acs.mfi.50, 1, 0)),
-#                               ACSMFI_30_FLAG = as.factor(ifelse(FINCP < acs.mfi.30, 1, 0)))
-
-# ## Defining ACS Regional Median Family Incomes
-# sample-info
-finc.byrace <- apply_by_defs_two(housing_weighted, "twoway_median",
-                                 race.label, race.defs, "FINCP")
-finc.byspan <- apply_by_defs_two(housing_weighted, "twoway_median",
-                                 span.label, span.defs, "FINCP")
-
-# reading in ACS median family income tables by geography
-# census_api_key("11654cc6c6ee4ff4791e54461c9b48da31c5ff68", install = TRUE, overwrite = TRUE)
-fincome_avg_division <- get_acs(table = "B19113", year = 2017, survey = "acs1",
-                                cache_table = TRUE,
-                                geography = "division")
-
-# WHEN THE CENSUS API ISN'T WORKING ON YOUR WIFI
-# fincome_avg_division <- data.frame("NAME" = c("New England Division", "Middle Atlantic Division",
-#                                               "East North Central Division", "West North Central Division",
-#                                               "South Atlantic Division", "East South Central Division",
-#                                               "West South Central Division", "Mountain Division",
-#                                               "Pacific Division"), 
-#                                    "estimate" = c(91189, 81703, 72215, 75430, 70430, 
-#                                                   61255, 66541, 72080, 81910))
-fincome_avg_division$NAME <- as.character(fincome_avg_division$NAME)
-fincome_avg_division <- 
-  fincome_avg_division %>% 
-  select(-c(GEOID, variable, moe)) %>% 
-  mutate(DIVISION = substr(fincome_avg_division$NAME, 1,
-                           nchar(fincome_avg_division$NAME)-9),
-         inclim_30 = 0.30 * estimate,
-         inclim_50 = 0.50 * estimate,
-         inclim_80 = 0.80 * estimate)
-# merging housing data with ACS median family income data
-housing <- merge(housing, fincome_avg_division[,c("DIVISION", "inclim_80", 
-                                                  "inclim_50", "inclim_30")],
-                 by = "DIVISION", all.x = TRUE)
-housing <- housing %>% mutate(ACSREG_80_FLAG = as.factor(ifelse(FINCP < inclim_80, 1, 0)),
-                              ACSREG_50_FLAG = as.factor(ifelse(FINCP < inclim_50, 1, 0)),
-                              ACSREG_30_FLAG = as.factor(ifelse(FINCP < inclim_30, 1, 0)))
-# 
-# # comparing HUD federal level income limits with regional income limits (ACS data)
-# ## most lenient standard
-summary(housing$ACSMFI_80_FLAG)
-summary(housing$ACSREG_80_FLAG)
-# 
-# ## strictest standard
-summary(housing$ACSMFI_30_FLAG)
-summary(housing$ACSREG_30_FLAG)
-
-
-# Recleaning and redefining data with new variables ----------------------------
-var.flag <- colnames(housing)[grepl("FLAG$", names(housing))]
-
-col_factor <- colnames(housing)[!(colnames(housing) %in% 
-                                    c(var.races, var.span, var.num, var.rating,
-                                      var.flag, var.pov, "X.1", "X", "HHAGE", 
-                                      "HINCP", "FINCP", "TOTHCAMT", "WEIGHT",
-                                      "estimate", "inclim_80", "inclim_50", 
-                                      "inclim_30"))]
-
-housing[,col_factor] <- lapply(housing[,col_factor], 
-                               function(x) fct_explicit_na(x)) %>% as.data.frame
-
-# if error, check which columsn not factor
-## sapply(housing[,col_factor], class)
-
-# Weighting data 
-housing_weighted <- housing %>% as_survey_design(ids = 1, weight = WEIGHT)
-
-
 
 # GRAPHS ------------------------------------------------------------------
 
@@ -599,26 +600,7 @@ openxlsx::saveWorkbook(excelfile_graph1, "csv files/graphs_final/graph-1-reg.xls
 
 # GRAPH 2: How many receiving support? ------------------------------------
 
-# (A) by RACE/ETH:
-twoway_fedsub_table(race.var, "FEDSUB4")
-
-# (B) by GENDER:
-twoway_fedsub_table("HHSEX", "FEDSUB4")
-
-# (C) by CITSHP:
-twoway_fedsub_table("HHCITSHP3", "FEDSUB4")
-
-test <- function(test, x, y) {
-  if (test == TRUE) {
-    print(x + y)
-  } else{
-    print(x)
-  }
-  
-}
-
-openxlsx::saveWorkbook(excelfile_graph2, "csv files/graphs_final/graph-2-fedsub.xlsx",  overwrite = TRUE)
-
+# defining functions
 
 twoway_fedsub_table <- function(group_var, sub_var) {
   prop.full <- twoway_prop(housing_weighted, group_var, sub_var)
@@ -626,7 +608,7 @@ twoway_fedsub_table <- function(group_var, sub_var) {
   prop.sub <- prop.full[,1:(nSub+1)]
   
   if(group_var %in% race.defs) {
-    index <- which(race.var %in% race.defs)
+    index <- which(group_var %in% race.defs)
     prop.span <- twoway_prop(housing_weighted, span.defs[index], sub_var)
     
     ## relabeling and combining
@@ -641,7 +623,7 @@ twoway_fedsub_table <- function(group_var, sub_var) {
   ## SHEET 1: estimate
   info.long <- gather(prop.sub, key,
                       estimate, 2:(nSub+1), factor_key = TRUE)
-
+  
   # setting `key_order`
   info.long <- 
     info.long[order(info.long$key,
@@ -664,19 +646,20 @@ twoway_fedsub_table <- function(group_var, sub_var) {
     prop.full %>% 
     select(group, colnames(prop.full)[3*nSub+2]:colnames(prop.full)[4*nSub+1]) %>% 
     gather(., key, CI_ub, colnames(prop.full)[3*nSub+2]:colnames(prop.full)[4*nSub+1], 
-  factor_key = TRUE)
+           factor_key = TRUE)
   levels(info.CI.ub$key) <- 
     substr(levels(info.CI.ub$key),
            1, nchar(levels(info.CI.ub$key))-nchar("_CI_ub"))
   
   info.CI <- 
     Reduce(function(x, y) merge(x, y, by = c("group", "key")), 
-           list(info.long[,1:3], info.CI.lb, info.CI.ub))
+           list(info.long[,1:4], info.CI.lb, info.CI.ub)) %>% 
+    mutate(MOE_prop = (0.5*(CI_ub-CI_lb)))
   info.CI.order <- 
     info.CI[order(info.CI$key, info.CI$estimate),]
   
-  sheetName1 <- paste0("by", group_var1)
-  sheetName2 <- paste0("CI-by", group_var1)
+  sheetName1 <- paste0("by", group_var)
+  sheetName2 <- paste0("CI-by", group_var)
   
   # Write to Excel sheet
   addWorksheet(wb = excelfile_graph2, sheetName = sheetName1, gridLines = TRUE)
@@ -685,8 +668,18 @@ twoway_fedsub_table <- function(group_var, sub_var) {
   addWorksheet(wb = excelfile_graph2, sheetName = sheetName2, gridLines = TRUE)
   writeData(wb = excelfile_graph2, sheet = sheetName2, 
             x = info.CI.order, startCol = 1, startRow = 1)
+  
   # print(head(info.long))
+  # print(info.long[info.long$key == "Public housing",])
   # print(head(info.CI.order))
+  
+  # Write only PH to Excel sheet
+  addWorksheet(wb = excelfile_graph3, sheetName = sheetName1, gridLines = TRUE)
+  writeData(wb = excelfile_graph3, sheet = sheetName1, 
+            x = info.long[info.long$key == "Public housing",], startCol = 1, startRow = 1)
+  addWorksheet(wb = excelfile_graph3, sheetName = sheetName2, gridLines = TRUE)
+  writeData(wb = excelfile_graph3, sheet = sheetName2, 
+            x = info.CI.order[info.CI.order$key == "Public housing",], startCol = 1, startRow = 1)
 }
 
 threeway_fedsub_table <- function(group_var1, group_var2, sub_var) {
@@ -695,8 +688,8 @@ threeway_fedsub_table <- function(group_var1, group_var2, sub_var) {
   nRow <- nlevels(housing[[group_var2]]) - 1
   prop.sub <- prop.full[,1:(nSub+2)]
   
-  if(group_var %in% race.defs) {
-    index <- which(race.var %in% race.defs)
+  if(group_var1 %in% race.defs) {
+    index <- which(group_var1 %in% race.defs)
     prop.span <- threeway_prop(housing_weighted, span.defs[index], 
                                group_var2, sub_var)
     
@@ -708,247 +701,106 @@ threeway_fedsub_table <- function(group_var1, group_var2, sub_var) {
     prop.full <- rbind(prop.full, prop.span[1:nRow,])
     prop.sub <- rbind(prop.sub[,1:(nSub+2)], prop.span[1:nRow,1:(nSub+2)])
     
-    }
+  }
   
   ## SHEET 1: estimate
   info.long <- gather(prop.sub, key,
                       estimate, 3:(nSub+2), factor_key = TRUE)
-    
+  
   # setting `key_order`
   info.long <-
     info.long[order(info.long$key,
                     info.long$estimate),]
   
   n.levels <- ifelse(group_var1 %in% race.defs, 
-                       nlevels(housing[[group_var1]]) * nRow,
-                       (nlevels(housing[[group_var1]]) - 1) * nRow)
+                     nlevels(housing[[group_var1]]) * nRow,
+                     (nlevels(housing[[group_var1]]) - 1) * nRow)
   info.long$key_order <- n.levels:1
   
   ## SHEET 2: with CIs
   info.CI.lb <- 
     prop.full %>%
-    select(group1, group2, 
+    select(group_1, group_2, 
            colnames(prop.full)[nSub+3]:colnames(prop.full)[2*nSub+2]) %>% 
     gather(., key, CI_lb, colnames(prop.full)[nSub+3]:colnames(prop.full)[2*nSub+2],
-             factor_key = TRUE)
+           factor_key = TRUE)
   levels(info.CI.lb$key) <- 
     substr(levels(info.CI.lb$key), 1,
            nchar(levels(info.CI.lb$key))-nchar("_CI_lb"))
   info.CI.ub <-
     prop.full %>%
-    select(group1, group2,
+    select(group_1, group_2,
            colnames(prop.full)[3*nSub+3]:colnames(prop.full)[4*nSub+2]) %>% 
     gather(., key, CI_ub, colnames(prop.full)[3*nSub+3]:colnames(prop.full)[4*nSub+2], 
-             factor_key = TRUE)
+           factor_key = TRUE)
   levels(info.CI.ub$key) <-
     substr(levels(info.CI.ub$key),
            1, nchar(levels(info.CI.ub$key))-nchar("_CI_ub"))
-    
+  
   info.CI <-
     Reduce(function(x, y)
-      merge(x, y, by = c("group", "key")),
-      list(info.long[,1:4], info.CI.lb, info.CI.ub))
+      merge(x, y, by = c("group_1", "group_2", "key")),
+      list(info.long[,1:5], info.CI.lb, info.CI.ub)) %>% 
+    mutate(MOE_prop = (0.5*(CI_ub-CI_lb)))
   info.CI.order <- 
     info.CI[order(info.CI$key, info.CI$estimate),]
   
   sheetName1 <- paste0("by", group_var1, "+", group_var2)
   sheetName2 <- paste0("CI-by", group_var1, "+", group_var2)
-    
-    # Write to Excel sheet
+  
+  # Write to Excel sheet
   addWorksheet(wb = excelfile_graph2, sheetName = sheetName1, gridLines = TRUE)
   writeData(wb = excelfile_graph2, sheet = sheetName1, 
-              x = info.long, startCol = 1, startRow = 1)
+            x = info.long, startCol = 1, startRow = 1)
   addWorksheet(wb = excelfile_graph2, sheetName = sheetName2, gridLines = TRUE)
   writeData(wb = excelfile_graph2, sheet = sheetName2, 
             x = info.CI.order, startCol = 1, startRow = 1)
-    # print(head(info.long))
-    # print(head(info.CI.order))
+  
+  # print(head(info.long))
+  # print(head(info.CI.order))
+  
+  # Write only PH to Excel sheet
+  addWorksheet(wb = excelfile_graph3, sheetName = sheetName1, gridLines = TRUE)
+  writeData(wb = excelfile_graph3, sheet = sheetName1, 
+            x = info.long[info.long$key == "Public housing",], 
+            startCol = 1, startRow = 1)
+  addWorksheet(wb = excelfile_graph3, sheetName = sheetName2, gridLines = TRUE)
+  writeData(wb = excelfile_graph3, sheet = sheetName2, 
+            x = info.CI.order[info.CI.order$key == "Public housing",],
+            startCol = 1, startRow = 1)
 }
 
+
+# creating graphs
+
+# This is twoway:
+# (A) by RACE/ETH:
+twoway_fedsub_table(race.var, "FEDSUB4")
+
+# (B) by GENDER:
+twoway_fedsub_table("HHSEX", "FEDSUB4")
+
+# (C) by CITSHP:
+twoway_fedsub_table("HHCITSHP3", "FEDSUB4")
+
+# (D) by EDUC:
+twoway_fedsub_table("HHGRAD4", "FEDSUB4")
+
+
+# This is threeway:
+# (A) by RACE & GENDER
 threeway_fedsub_table(race.var, "HHSEX", "FEDSUB4")
 
-# (D) BY RACE & GENDER -----------------------------------------------------------
+# (B) by RACE & CITSHP
+threeway_fedsub_table(race.var, "HHCITSHP3", "FEDSUB4")
 
-prop.fedsub.race.sex <- threeway_prop(housing_weighted, race.var,
-                                      "HHSEX", "FEDSUB5")
-prop.fedsub.span.sex <- threeway_prop(housing_weighted, span.var,
-                                      "HHSEX", "FEDSUB5")
-
-## relabeling and combining
-levels(prop.fedsub.race.sex$group_1) <- graph.race.lab
-levels(prop.fedsub.span.sex$group_1) <- graph.span.lab
-
-# combine into one table
-info.fedsub.race.sex <- rbind(prop.fedsub.race.sex[,1:7],
-                              prop.fedsub.span.sex[1:2,1:7])
-prop.fedsub.race.sex <- rbind(prop.fedsub.race.sex,
-                              prop.fedsub.span.sex[1:2,])
+# (C) by RACE & EDUC
+threeway_fedsub_table(race.var, "HHGRAD4", "FEDSUB4")
 
 
-info.fedsub.race.sex_long <- gather(info.fedsub.race.sex, key,
-                                    estimate, 3:7, factor_key = TRUE)
+openxlsx::saveWorkbook(excelfile_graph2, "csv files/graphs_final/graph-2-hh.xlsx",  
+                       overwrite = TRUE)
+# just public housing
+openxlsx::saveWorkbook(excelfile_graph3, "csv files/graphs_final/graph-3-hh-ph.xlsx",  
+                       overwrite = TRUE)
 
-# setting `key_order`
-info.fedsub.race.sex_long <- 
-  info.fedsub.race.sex_long[order(info.fedsub.race.sex_long$key,
-                                  info.fedsub.race.sex_long$estimate),]
-# info.fedsub.race.cit_long <- 
-#   info.fedsub.race.cit_long[order(info.fedsub.race.cit_long$group_1,
-#                                   info.fedsub.race.cit_long$group_2,
-#                                   info.fedsub.race.cit_long$key),]
-n.levels <- nlevels(housing[[race.var]]) * (nlevels(housing$HHSEX)-1)
-info.fedsub.race.sex_long$key_order <- n.levels:1
-
-## SHEET 2: with CIs
-fedsub.race.sex.CI.lb <- 
-  prop.fedsub.race.sex %>% 
-  select(group_1, group_2, `Other renter_CI_lb`:`Owner_CI_lb`) %>% 
-  gather(., key, CI_lb, `Other renter_CI_lb`:`Owner_CI_lb`, factor_key = TRUE)
-levels(fedsub.race.sex.CI.lb$key) <- substr(levels(fedsub.race.sex.CI.lb$key), 
-                                              1, nchar(levels(fedsub.race.sex.CI.lb$key))-nchar("_CI_lb"))
-fedsub.race.sex.CI.ub <- 
-  prop.fedsub.race.sex %>% 
-  select(group_1, group_2, `Other renter_CI_ub`:`Owner_CI_ub`) %>% 
-  gather(., key, CI_ub, `Other renter_CI_ub`:`Owner_CI_ub`, factor_key = TRUE)
-levels(fedsub.race.sex.CI.ub$key) <- substr(levels(fedsub.race.sex.CI.ub$key), 
-                                              1, nchar(levels(fedsub.race.sex.CI.ub$key))-nchar("_CI_ub"))
-
-info.fedsub.CI <- 
-  Reduce(function(x, y) merge(x, y, by = c("group_1", "group_2", "key")), 
-         list(info.fedsub.race.sex_long[,1:4], fedsub.race.sex.CI.lb, fedsub.race.sex.CI.ub))
-info.fedsub.CI.race.sex <- 
-  info.fedsub.CI[order(info.fedsub.CI$key, info.fedsub.CI$estimate),]
-
-# Write to Excel sheet
-addWorksheet(wb = excelfile_graph2, sheetName = "fedsub-byrace+sex", gridLines = TRUE)
-writeData(wb = excelfile_graph2, sheet = "fedsub-byrace+sex", 
-          x = info.fedsub.race.sex_long, startCol = 1, startRow = 1)
-addWorksheet(wb = excelfile_graph2, sheetName = "CI-fedsub-byrace+sex", gridLines = TRUE)
-writeData(wb = excelfile_graph2, sheet = "CI-fedsub-byrace+sex", 
-          x = info.fedsub.CI.race.sex, startCol = 1, startRow = 1)
-
-# (D) BY RACE & CITSHIP -----------------------------------------------------------
-
-prop.fedsub.race.cit <- threeway_prop(housing_weighted, "race.var",
-                                      "HHCITSHP3", "FEDSUB5")
-prop.fedsub.span.cit <- threeway_prop(housing_weighted, span.var,
-                                      "HHCITSHP3", "FEDSUB5")
-
-## relabeling and combining
-levels(prop.fedsub.race.cit$group_1) <- graph.race.lab
-levels(prop.fedsub.span.cit$group_1) <- graph.span.lab
-
-# combine into one table
-info.fedsub.race.cit <- rbind(prop.fedsub.race.cit[,1:7],
-                              prop.fedsub.span.cit[1:3,1:7])
-prop.fedsub.race.cit <- rbind(prop.fedsub.race.cit,
-                              prop.fedsub.span.cit[1:3,])
-
-
-info.fedsub.race.cit_long <- gather(info.fedsub.race.cit, key,
-                                    estimate, 3:7, factor_key = TRUE)
-
-# setting `key_order`
-info.fedsub.race.cit_long <- 
-  info.fedsub.race.cit_long[order(info.fedsub.race.cit_long$key,
-                                  info.fedsub.race.cit_long$estimate),]
-# info.fedsub.race.cit_long <- 
-#   info.fedsub.race.cit_long[order(info.fedsub.race.cit_long$group_1,
-#                                   info.fedsub.race.cit_long$group_2,
-#                                   info.fedsub.race.cit_long$key),]
-n.levels <- nlevels(housing[[race.var]]) * (nlevels(housing$HHCITSHP3)-1)
-info.fedsub.race.cit_long$key_order <- n.levels:1
-
-## SHEET 2: with CIs
-fedsub.race.cit.CI.lb <- 
-  prop.fedsub.race.cit %>% 
-  select(group_1, group_2, `Other renter_CI_lb`:`Owner_CI_lb`) %>% 
-  gather(., key, CI_lb, `Other renter_CI_lb`:`Owner_CI_lb`, factor_key = TRUE)
-levels(fedsub.race.cit.CI.lb$key) <- substr(levels(fedsub.race.cit.CI.lb$key), 
-                                            1, nchar(levels(fedsub.race.cit.CI.lb$key))-nchar("_CI_lb"))
-fedsub.race.cit.CI.ub <- 
-  prop.fedsub.race.cit %>% 
-  select(group_1, group_2, `Other renter_CI_ub`:`Owner_CI_ub`) %>% 
-  gather(., key, CI_ub, `Other renter_CI_ub`:`Owner_CI_ub`, factor_key = TRUE)
-levels(fedsub.race.cit.CI.ub$key) <- substr(levels(fedsub.race.cit.CI.ub$key), 
-                                            1, nchar(levels(fedsub.race.cit.CI.ub$key))-nchar("_CI_ub"))
-
-info.fedsub.CI <- 
-  Reduce(function(x, y) merge(x, y, by = c("group_1", "group_2", "key")), 
-         list(info.fedsub.race.cit_long[,1:4], fedsub.race.cit.CI.lb, fedsub.race.cit.CI.ub))
-info.fedsub.CI.race.cit <- 
-  info.fedsub.CI[order(info.fedsub.CI$key, info.fedsub.CI$estimate),]
-
-# Write to Excel sheet
-addWorksheet(wb = excelfile_graph2, sheetName = "fedsub-byrace+cit", gridLines = TRUE)
-writeData(wb = excelfile_graph2, sheet = "fedsub-byrace+cit", 
-          x = info.fedsub.race.cit_long, startCol = 1, startRow = 1)
-addWorksheet(wb = excelfile_graph2, sheetName = "CI-fedsub-byrace+cit", gridLines = TRUE)
-writeData(wb = excelfile_graph2, sheet = "CI-fedsub-byrace+cit", 
-          x = info.fedsub.CI.race.cit, startCol = 1, startRow = 1)
-
-# (D) BY RACE & EDUC -----------------------------------------------------------
-
-# just by education
-twoway_prop(housing_weighted, "HHGRAD6", "FEDSUB5")
-
-prop.fedsub.race.educ <- threeway_prop(housing_weighted, "race.var",
-                                      "HHGRAD6", "FEDSUB5")
-prop.fedsub.span.educ <- threeway_prop(housing_weighted, span.var,
-                                      "HHGRAD6", "FEDSUB5")
-
-## relabeling and combining
-levels(prop.fedsub.race.educ$group_1) <- graph.race.lab
-levels(prop.fedsub.span.educ$group_1) <- graph.span.lab
-
-# combine into one table
-info.fedsub.race.educ <- rbind(prop.fedsub.race.educ[,1:7],
-                              prop.fedsub.span.educ[1:6,1:7])
-prop.fedsub.race.educ <- rbind(prop.fedsub.race.educ,
-                              prop.fedsub.span.educ[1:6,])
-
-
-info.fedsub.race.educ_long <- gather(info.fedsub.race.educ, key,
-                                    estimate, 3:7, factor_key = TRUE)
-
-# setting `key_order`
-info.fedsub.race.educ_long <- 
-  info.fedsub.race.educ_long[order(info.fedsub.race.educ_long$key,
-                                  info.fedsub.race.educ_long$estimate),]
-# info.fedsub.race.cit_long <- 
-#   info.fedsub.race.cit_long[order(info.fedsub.race.cit_long$group_1,
-#                                   info.fedsub.race.cit_long$group_2,
-#                                   info.fedsub.race.cit_long$key),]
-n.levels <- nlevels(housing[[race.var]]) * (nlevels(housing$HHGRAD6)-1)
-info.fedsub.race.educ_long$key_order <- n.levels:1
-
-## SHEET 2: with CIs
-fedsub.race.educ.CI.lb <- 
-  prop.fedsub.race.educ %>% 
-  select(group_1, group_2, `Other renter_CI_lb`:`Owner_CI_lb`) %>% 
-  gather(., key, CI_lb, `Other renter_CI_lb`:`Owner_CI_lb`, factor_key = TRUE)
-levels(fedsub.race.educ.CI.lb$key) <- substr(levels(fedsub.race.educ.CI.lb$key), 
-                                            1, nchar(levels(fedsub.race.educ.CI.lb$key))-nchar("_CI_lb"))
-fedsub.race.educ.CI.ub <- 
-  prop.fedsub.race.educ %>% 
-  select(group_1, group_2, `Other renter_CI_ub`:`Owner_CI_ub`) %>% 
-  gather(., key, CI_ub, `Other renter_CI_ub`:`Owner_CI_ub`, factor_key = TRUE)
-levels(fedsub.race.educ.CI.ub$key) <- substr(levels(fedsub.race.educ.CI.ub$key), 
-                                            1, nchar(levels(fedsub.race.educ.CI.ub$key))-nchar("_CI_ub"))
-
-info.fedsub.CI <- 
-  Reduce(function(x, y) merge(x, y, by = c("group_1", "group_2", "key")), 
-         list(info.fedsub.race.educ_long[,1:4], fedsub.race.educ.CI.lb, fedsub.race.educ.CI.ub))
-info.fedsub.CI.race.educ <- 
-  info.fedsub.CI[order(info.fedsub.CI$key, info.fedsub.CI$estimate),]
-
-# Write to Excel sheet
-addWorksheet(wb = excelfile_graph2, sheetName = "fedsub-byrace+educ", gridLines = TRUE)
-writeData(wb = excelfile_graph2, sheet = "fedsub-byrace+educ", 
-          x = info.fedsub.race.educ_long, startCol = 1, startRow = 1)
-addWorksheet(wb = excelfile_graph2, sheetName = "CI-fedsub-byrace+educ", gridLines = TRUE)
-writeData(wb = excelfile_graph2, sheet = "CI-fedsub-byrace+educ", 
-          x = info.fedsub.CI.race.educ, startCol = 1, startRow = 1)
-
-# Save all to Excel workbook
-openxlsx::saveWorkbook(excelfile_graph2, "csv files/graphs_final/graph-2-fedsub.xlsx",  overwrite = TRUE)
