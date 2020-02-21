@@ -17,7 +17,7 @@ library(dplyr)
 # Recoding variables:
 ```{r}
 # ahs_subset <- read.csv("ahs2017_hhsubset.csv")
-ahs_flat <- read.csv("../raw data/ahs2017_hhsubset_flat.csv")
+ahs_flat <- read.csv("raw data/ahs2017_hhsubset_flat.csv", as.is=TRUE)
 ```
 
 # For Flat File:
@@ -341,6 +341,12 @@ recode.hhcitshp <- c("'1'" = "Native, born in US",
                      "'-6'" = NA)
 ahs_flat$HHCITSHP <- revalue(ahs_flat$HHCITSHP, recode.hhcitshp)
 ahs_flat$HHCITSHP <- as.factor(ahs_flat$HHCITSHP)
+
+# ahs_flat[1:14, c("CITSHP1", "CITSHP2")]
+# for (i in 1:length(var.citshp)) {
+#   ahs_flat[[var.citshp[i]]] %in% c("'1'", "'2'", "'3'", "'4'")
+# }
+# tmp<- ahs_flat[var.citshp] %in% c("'1'", "'2'", "'3'", "'4'")
 
 # HHNATVTY
 # levels(ahs_flat$HHNATVTY)

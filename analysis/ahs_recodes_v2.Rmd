@@ -1,0 +1,586 @@
+---
+title: "ahs_recodes"
+author: "Alissa Ji"
+date: "7/10/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(plyr)
+library(dplyr)
+```
+
+# Recoding variables:
+```{r}
+# ahs_subset <- read.csv("ahs2017_hhsubset.csv")
+ahs_flat <- read.csv("raw data/ahs2017_hhsubset_flat.csv")
+```
+
+# For Flat File:
+
+## Race and ethnicity:
+```{r}
+# HHRACE
+# levels(ahs_flat$HHRACE)
+recode.hhrace <- c("'01'" = "White alone",
+                   "'02'" = "Black alone",
+                   "'03'" = "AIAN alone",
+                   "'04'" = "Asian alone",
+                   "'05'" = "NHPI alone",
+                   "'06'" = "White / Black",
+                   "'07'" = "White / AIAN",
+                   "'08'" = "White / Asian",
+                   "'09'" = "White / NHPI",
+                   "'10'" = "Black / AIAN",
+                   "'11'" = "Black / Asian",
+                   "'12'" = "Black / NHPI",
+                   "'13'" = "AIAN / Asian",
+                   "'14'" = "Asian / NHPI",
+                   "'15'" = "White / Black / AIAN",
+                   "'16'" = "White / Black /Asian",
+                   "'17'" = "White / AIAN / Asian",
+                   "'18'" = "White / Asian / NHPI",
+                   "'19'" = "White / Black / AIAN / Asian",
+                   "'20'" = "Other combinations of 2 or 3 races",
+                   "'21'" = "Other combinations of 4 or more races",
+                   "'-6'" = NA)
+ahs_flat$HHRACE <- revalue(ahs_flat$HHRACE, recode.hhrace)
+
+# HHSPAN2
+# levels(ahs_flat$HHSPAN2)
+ahs_flat$HHSPAN2 <- ahs_flat$HHSPAN
+recode.hhspan2 <- c("'1'" = "Hispanic or Latinx",
+                    "'2'" = "Not Hispanic or Latinx",
+                    "'-6'" = NA)
+ahs_flat$HHSPAN2 <- revalue(ahs_flat$HHSPAN2, recode.hhspan2)
+ahs_flat$HHSPAN2 <- as.factor(ahs_flat$HHSPAN2)
+
+# HHRACE2
+ahs_flat$HHRACE2 <- as.character(ahs_flat$HHRACE)
+ahs_flat$HHRACE2[!(ahs_flat$HHRACE2 %in% 
+                     c("White alone",
+                       "Black alone",
+                       "AIAN alone",
+                       "Asian alone",
+                       "NHPI alone"))] <- "2 or more races"
+ahs_flat$HHRACE2 <- as.factor(ahs_flat$HHRACE2)
+# levels(ahs_flat$HHRACE2)
+
+# HHRACE3
+## drops multiracial individuals
+ahs_flat$HHRACE3 <- as.character(ahs_flat$HHRACE)
+ahs_flat$HHRACE3[!(ahs_flat$HHRACE2 %in% 
+                     c("White alone", "Black alone", 
+                       "AIAN alone", 
+                       "Asian alone", "NHPI alone"))] <- NA
+ahs_flat$HHRACE3 <- as.factor(ahs_flat$HHRACE3)
+
+# RACE_[race]Alone
+## binary variables that indicate whether or not a HH identifies as a given race (1/0)
+ahs_flat <- ahs_flat %>% 
+  mutate(RACE_WhiteAloneNH = ifelse(grepl("White", HHRACE) & 
+                                    HHSPAN2 == "Not Hispanic or Latinx", 1, 0),
+         RACE_WhiteAlone = ifelse(grepl("White", HHRACE), 1, 0),
+         RACE_BlackAlone = ifelse(grepl("Black", HHRACE), 1, 0),
+         RACE_AIANAlone = ifelse(grepl("AIAN", HHRACE), 1, 0),
+         RACE_AsianAlone = ifelse(grepl("Asian", HHRACE), 1, 0),
+         RACE_NHPIAlone = ifelse(grepl("NHPI", HHRACE), 1, 0))
+
+# HHRACEAS        
+# levels(ahs_flat$HHRACEAS)
+recode.hhraceas <- c("'1'" = "Asian Indian only",
+                     "'2'" = "Chinese only",
+                     "'3'" = "Filipino only",
+                     "'4'" = "Japanese only",
+                     "'5'" = "Korean only",
+                     "'6'" = "Vietnamese only",
+                     "'7'" = "Some other Asian race only",
+                     "'8'" = "Two or more Asian races",
+                     "'-6'" = NA)
+ahs_flat$HHRACEAS <- revalue(ahs_flat$HHRACEAS, recode.hhraceas)
+
+# HHRACEPI
+# levels(ahs_flat$HHRACEPI)
+recode.hhracepi <- c("'1'" = "Native Hawaiian only",
+                     "'2'" = "Guamanian or Chamorro only",
+                     "'3'" = "Samoan only",
+                     "'4'" = "Some other Pacific islander race only",
+                     "'5'" = "Two or more Native Hawaiian or Pacific islander races",
+                     "'-6'" = NA)
+ahs_flat$HHRACEPI <- revalue(ahs_flat$HHRACEPI, recode.hhracepi)
+
+# RACEETH
+ahs_flat <- ahs_flat %>% mutate(RACEETH = NA)
+ahs_flat$RACEETH[ahs_flat$HHSPAN2 == "Not Hispanic or Latinx" &
+                   ahs_flat$HHRACE == "White alone"] <- "White alone NH"
+ahs_flat$RACEETH[ahs_flat$HHRACE == "Black alone"] <- "Black alone"
+ahs_flat$RACEETH[ahs_flat$HHRACE == "Asian alone"] <- "Asian alone"
+ahs_flat$RACEETH[ahs_flat$HHRACE == "AIAN alone"] <- "AIAN alone"
+ahs_flat$RACEETH[ahs_flat$HHRACE == "NHPI alone"] <- "NHPI alone"
+ahs_flat$RACEETH <- as.factor(ahs_flat$RACEETH) ## TEST TO SEE IF NEED
+```
+
+## Race of household:
+```{r, eval}
+# Recoding person race variables
+ahs_flat$RACE1 <- as.integer(ahs_flat$RACE1)
+ahs_flat$RACE1[ahs_flat$RACE1 == 1] <- 0
+ahs_flat$RACE1[ahs_flat$RACE1 > 6] <- -10
+
+ahs_flat$RACE2 <- as.integer(ahs_flat$RACE2)
+ahs_flat$RACE2[ahs_flat$RACE2 == 1] <- 0
+ahs_flat$RACE2[ahs_flat$RACE2 > 6] <- -1
+
+ahs_flat$RACE3 <- as.integer(ahs_flat$RACE3)
+ahs_flat$RACE3[ahs_flat$RACE3 == 1] <- 0
+ahs_flat$RACE3[ahs_flat$RACE3 > 6] <- -10
+
+ahs_flat$RACE4 <- as.integer(ahs_flat$RACE4)
+ahs_flat$RACE4[ahs_flat$RACE4 == 1] <- 0
+ahs_flat$RACE4[ahs_flat$RACE4 > 6] <- -1
+
+ahs_flat$RACE5 <- as.integer(ahs_flat$RACE5)
+ahs_flat$RACE5[ahs_flat$RACE5 == 1] <- 0
+ahs_flat$RACE5[ahs_flat$RACE5 > 6] <- -10
+
+ahs_flat$RACE6 <- as.integer(ahs_flat$RACE6)
+ahs_flat$RACE6[ahs_flat$RACE6 == 1] <- 0
+ahs_flat$RACE6[ahs_flat$RACE6 > 6] <- -1
+
+ahs_flat$RACE7 <- as.integer(ahs_flat$RACE7)
+ahs_flat$RACE7[ahs_flat$RACE7 == 1] <- 0
+ahs_flat$RACE7[ahs_flat$RACE7 > 6] <- -10
+
+ahs_flat$RACE8 <- as.integer(ahs_flat$RACE8)
+ahs_flat$RACE8[ahs_flat$RACE8 == 1] <- 0
+ahs_flat$RACE8[ahs_flat$RACE8 > 6] <- -1
+
+ahs_flat$RACE9 <- as.integer(ahs_flat$RACE9)
+ahs_flat$RACE9[ahs_flat$RACE9 == 1] <- 0
+ahs_flat$RACE9[ahs_flat$RACE9 > 6] <- -10
+
+ahs_flat$RACE10 <- as.integer(ahs_flat$RACE10)
+ahs_flat$RACE10[ahs_flat$RACE10 == 1] <- 0
+ahs_flat$RACE10[ahs_flat$RACE10 > 6] <- -1
+
+ahs_flat$RACE11 <- as.integer(ahs_flat$RACE11)
+ahs_flat$RACE11[ahs_flat$RACE11 == 1] <- 0
+ahs_flat$RACE11[ahs_flat$RACE11 > 6] <- -10
+
+ahs_flat$RACE12 <- as.integer(ahs_flat$RACE12)
+ahs_flat$RACE12[ahs_flat$RACE12 == 1] <- 0
+ahs_flat$RACE12[ahs_flat$RACE12 > 6] < -1 
+
+ahs_flat$RACE13 <- as.integer(ahs_flat$RACE13)
+ahs_flat$RACE13[ahs_flat$RACE13 == 1] <- 0
+ahs_flat$RACE13[ahs_flat$RACE13 > 6] <- -10
+
+ahs_flat$RACE14 <- as.integer(ahs_flat$RACE14)
+ahs_flat$RACE14[ahs_flat$RACE14 == 1] <- 0
+ahs_flat$RACE14[ahs_flat$RACE14 > 6] <- -1
+
+ahs_flat$RACE15 <- as.integer(ahs_flat$RACE15)
+ahs_flat$RACE15[ahs_flat$RACE15 == 1] <- 0
+ahs_flat$RACE15[ahs_flat$RACE15 > 6] <- -10
+
+ahs_flat$RACE16 <- as.integer(ahs_flat$RACE16)
+ahs_flat$RACE16[ahs_flat$RACE16 == 1] <- 0
+ahs_flat$RACE16[ahs_flat$RACE16 > 6] <- -1
+
+ahs_flat$RACE17 <- as.integer(ahs_flat$RACE17)
+ahs_flat$RACE17[ahs_flat$RACE17 == 1] <- 0
+ahs_flat$RACE17[ahs_flat$RACE17 > 6] <- -10
+
+ahs_flat$RACE18 <- as.integer(ahs_flat$RACE18)
+ahs_flat$RACE18[ahs_flat$RACE18 == 1] <- 0
+ahs_flat$RACE18[ahs_flat$RACE18 > 6] <- -1
+
+# Variable to check if all race variables are the same
+ahs_flat <- ahs_flat %>% 
+  mutate(HOUSEHOLDRACE_FLAG = ifelse(RACE1 > 0 &
+                                       (RACE2 == RACE1 | RACE2 == 0) &
+                                       (RACE3 == RACE1 | RACE3 == 0) &
+                                       (RACE4 == RACE1 | RACE4 == 0) &
+                                       (RACE5 == RACE1 | RACE5 == 0) &
+                                       (RACE6 == RACE1 | RACE6 == 0) &
+                                       (RACE7 == RACE1 | RACE7 == 0) &
+                                       (RACE8 == RACE1 | RACE8 == 0) &
+                                       (RACE9 == RACE1 | RACE9 == 0) &
+                                       (RACE10 == RACE1 | RACE10 == 0) &
+                                       (RACE11 == RACE1 | RACE11 == 0) &
+                                       (RACE12 == RACE1 | RACE12 == 0) &
+                                       (RACE13 == RACE1 | RACE13 == 0) &
+                                       (RACE14 == RACE1 | RACE14 == 0) &
+                                       (RACE15 == RACE1 | RACE15 == 0) &
+                                       (RACE16 == RACE1 | RACE16 == 0) &
+                                       (RACE17 == RACE1 | RACE17 == 0) &
+                                       (RACE18 == RACE1 | RACE18 == 0), 1, 0))
+ahs_flat$HOUSEHOLDRACE_FLAG <- as.factor(ahs_flat$HOUSEHOLDRACE_FLAG)
+
+# HOUSEHOLDRACE
+ahs_flat <- ahs_flat %>% 
+  mutate(HOUSEHOLDRACE = ifelse(HOUSEHOLDRACE_FLAG == 0 , NA, 
+                                ifelse(RACE1 == 2, "White",
+                                       ifelse(RACE1 == 3, "Black",
+                                              ifelse(RACE1 == 4, "AIAN",
+                                                     ifelse(RACE1 == 5, "Asian",
+                                                            ifelse(RACE1 == 6, "NHPI", NA)))))))
+# table(ahs_flat$HOUSEHOLDRACE)
+```
+
+## Hispanic/Latinx ethnicity of household:
+```{r, eval}
+# Recoding person ethnicity variables
+ahs_flat$SPAN1 <- as.integer(ahs_flat$SPAN1)
+ahs_flat$SPAN2 <- as.integer(ahs_flat$SPAN2)
+ahs_flat$SPAN3 <- as.integer(ahs_flat$SPAN3)
+ahs_flat$SPAN4 <- as.integer(ahs_flat$SPAN4)
+ahs_flat$SPAN5 <- as.integer(ahs_flat$SPAN5)
+ahs_flat$SPAN6 <- as.integer(ahs_flat$SPAN6)
+ahs_flat$SPAN7 <- as.integer(ahs_flat$SPAN7)
+ahs_flat$SPAN8 <- as.integer(ahs_flat$RACE8)
+ahs_flat$SPAN9 <- as.integer(ahs_flat$SPAN9)
+ahs_flat$SPAN10 <- as.integer(ahs_flat$SPAN10)
+ahs_flat$SPAN11 <- as.integer(ahs_flat$SPAN11)
+ahs_flat$SPAN12 <- as.integer(ahs_flat$SPAN12)
+ahs_flat$SPAN13 <- as.integer(ahs_flat$SPAN13)
+ahs_flat$SPAN14 <- as.integer(ahs_flat$SPAN14)
+ahs_flat$SPAN15 <- as.integer(ahs_flat$SPAN15)
+ahs_flat$SPAN16 <- as.integer(ahs_flat$SPAN16)
+ahs_flat$SPAN17 <- as.integer(ahs_flat$SPAN17)
+ahs_flat$SPAN18 <- as.integer(ahs_flat$SPAN18)
+
+# Variable to check if all race variables are the same
+ahs_flat <- ahs_flat %>% 
+  mutate(HOUSEHOLDSPAN_FLAG = ifelse(SPAN1 > 1 &
+                                       (SPAN2 == SPAN1 | SPAN2 == 1) &
+                                       (SPAN3 == SPAN1 | SPAN3 == 1) &
+                                       (SPAN4 == SPAN1 | SPAN4 == 1) &
+                                       (SPAN5 == SPAN1 | SPAN5 == 1) &
+                                       (SPAN6 == SPAN1 | SPAN6 == 1) &
+                                       (SPAN7 == SPAN1 | SPAN7 == 1) &
+                                       (SPAN8 == SPAN1 | SPAN8 == 1) &
+                                       (SPAN9 == SPAN1 | SPAN9 == 1) &
+                                       (SPAN10 == SPAN1 | SPAN10 == 1) &
+                                       (SPAN11 == SPAN1 | SPAN11 == 1) &
+                                       (SPAN12 == SPAN1 | SPAN12 == 1) &
+                                       (SPAN13 == SPAN1 | SPAN13 == 1) &
+                                       (SPAN14 == SPAN1 | SPAN14 == 1) &
+                                       (SPAN15 == SPAN1 | SPAN15 == 1) &
+                                       (SPAN16 == SPAN1 | SPAN16 == 1) &
+                                       (SPAN17 == SPAN1 | SPAN17 == 1) &
+                                       (SPAN18 == SPAN1 | SPAN18 == 1), 1, 0))
+ahs_flat$HOUSEHOLDSPAN_FLAG <- as.factor(ahs_flat$HOUSEHOLDSPAN_FLAG)
+
+# HOUSEHOLDSPAN
+ahs_flat <- ahs_flat %>% 
+  mutate(HOUSEHOLDSPAN = ifelse(SPAN1 == 1, NA,
+                                ifelse(SPAN1 == 2, "Hispanic or Latinx",
+                                       ifelse(SPAN1 == 3, "Not Hispanic or Latinx", NA))))
+
+# HOUSEHOLDRACEETH
+ahs_flat <- ahs_flat %>% 
+  mutate(HOUSEHOLDRACEETH = ifelse(HOUSEHOLDSPAN == "Not Hispanic or Latinx" & HOUSEHOLDRACE == "White", "White NH",
+                                          ifelse(HOUSEHOLDRACE == "Black", "Black",
+                                                 ifelse(HOUSEHOLDRACE == "AIAN", "AIAN",
+                                                        ifelse(HOUSEHOLDRACE == "Asian", "Asian",
+                                                               ifelse(HOUSEHOLDRACE == "NHPI", "NHPI", NA))))))
+                              
+# table(ahs_flat$HOUSEHOLDRACEETH)
+# tail(ahs_flat[ahs_flat$HOUSEHOLDSPAN_FLAG == 1,])
+```
+
+## Householder demographic variables:
+```{r}
+# HHSEX
+# levels(ahs_flat$HHSEX)
+recode.hhsex <- c("'1'" = "M",
+                  "'2'" = "F",
+                  "'-6'" = NA)
+ahs_flat$HHSEX <- revalue(ahs_flat$HHSEX, recode.hhsex)
+
+# HHMAR
+# levels(ahs_flat$HHMAR)
+recode.hhmar <- c("'1'" = "Married, spouse present",
+                  "'2'" = "Married, spouse absent",
+                  "'3'" = "Widowed",
+                  "'4'" = "Divorced",
+                  "'5'" = "Separated",
+                  "'6'" = "Never married",
+                  "'-6'" = NA)
+ahs_flat$HHMAR <- revalue(ahs_flat$HHMAR, recode.hhmar)
+ahs_flat$HHMAR <- as.factor(ahs_flat$HHMAR)
+
+# # HHCITSHP2
+# ahs_flat <- ahs_flat %>%
+#   mutate(HHCITSHP2 = ifelse(HHCITSHP %in% c("'1'", "'2'", "'3'", "'4'"),
+#                             "US citizen", ifelse(HHCITSHP == "'5'", "Not US citizen", NA)))
+# ahs_flat$HHCITSHP2 <- as.factor(ahs_flat$HHCITSHP2)
+# 
+# # HHCITSHP3
+# # levels(ahs_flat$HHCITSHP)
+# recode.hhcitshp3 <- c("'1'" = "US citizen, native",
+#                       "'2'" = "US citizen, native",
+#                       "'3'" = "US citizen, native",
+#                       "'4'" = "US citizen, naturalization",
+#                       "'5'" = "Not US citizen",
+#                       "'-6'" = NA)
+# ahs_flat$HHCITSHP3 <- revalue(ahs_flat$HHCITSHP, recode.hhcitshp3)
+# ahs_flat$HHCITSHP3 <- as.factor(ahs_flat$HHCITSHP3)
+
+# HHCITSHP
+# levels(ahs_flat$HHCITSHP)
+recode.hhcitshp <- c("'1'" = "Native, born in US",
+                     "'2'" = "Native, born in Puerto Rico or US outlying area",
+                     "'3'" = "Native born abroad of US parent(s)",
+                     "'4'" = "Foreign born, US citizen by naturalization",
+                     "'5'" = "Foreign born, not a US citizen",
+                     "'-6'" = NA)
+ahs_flat$HHCITSHP <- revalue(ahs_flat$HHCITSHP, recode.hhcitshp)
+ahs_flat$HHCITSHP <- as.factor(ahs_flat$HHCITSHP)
+
+# ahs_flat[1:14, c("CITSHP1", "CITSHP2")]
+# for (i in 1:length(var.citshp)) {
+#   ahs_flat[[var.citshp[i]]] %in% c("'1'", "'2'", "'3'", "'4'")
+# }
+# tmp<- ahs_flat[var.citshp] %in% c("'1'", "'2'", "'3'", "'4'")
+
+# HHNATVTY
+# levels(ahs_flat$HHNATVTY)
+ahs_flat <- ahs_flat %>% 
+  mutate(HHNATVTY_US = ifelse(HHNATVTY == "'057'", "US", NA))
+ahs_flat$HHNATVTY_US <- as.factor(ahs_flat$HHNATVTY_US)
+
+# HHGRAD6
+# levels(ahs_flat$HHGRAD)
+ahs_flat <- ahs_flat %>%
+  mutate(HHGRAD6 = ifelse(HHGRAD %in% c("'31'","'32'", "'33'", "'34'"), "1_< HS",
+                          ifelse(HHGRAD %in% c("'35'","'36'", "'37'", "'38'"), "2_HS, no degree",
+                                 ifelse(HHGRAD %in% c("'39'","'40'"), "3_HS diploma or equivalent",
+                                        ifelse(HHGRAD %in% c("'41'","'42'", "'43'"), "4_Associate degree or vocational",
+                                               ifelse(HHGRAD == "'44'", "5_Bachelor's degree",
+                                                      ifelse(HHGRAD %in% c("'45'","'46'", "'47'"), "6_Graduate degree", NA)))))))
+ahs_flat$HHGRAD6 <- as.factor(ahs_flat$HHGRAD6)
+# 
+# recode.division <- c("'31'" = "New England",
+#                      "'2'" = "Middle Atlantic",
+#                      "'3'" = "East North Central",
+#                      "'4'" = "West North Central",
+#                      "'5'" = "South Atlantic",
+#                      "'6'" = "East South Central",
+#                      "'7'" = "West South Central",
+#                      "'8'" = "Mountain",
+#                      "'9'" = "Pacific")
+
+
+# < HIGH SCHOOL
+# SOME HIGH SCHOOL, NO DIPLOMA
+# high school graduate, diploma, or equivalent
+# some college, no degree
+# associate/trade/technical
+# bachelor's
+# graduate or professional
+```
+ 
+## Geography and household demographics variables:
+```{r}
+# DIVISION
+# levels(ahs_flat$DIVISION)
+recode.division <- c("'1'" = "New England",
+                     "'2'" = "Middle Atlantic",
+                     "'3'" = "East North Central",
+                     "'4'" = "West North Central",
+                     "'5'" = "South Atlantic",
+                     "'6'" = "East South Central",
+                     "'7'" = "West South Central",
+                     "'8'" = "Mountain",
+                     "'9'" = "Pacific")
+ahs_flat$DIVISION <- revalue(ahs_flat$DIVISION, recode.division)
+
+# BLD2
+# levels(ahs_flat$BLD)
+ahs_flat$BLD2 <- ifelse(ahs_flat$BLD == "'01'", "Mobile home or trailer",
+                        ifelse(ahs_flat$BLD %in% c("'02'", "'03'"),
+                               "One-family house",
+                               ifelse(ahs_flat$BLD == "'10'",
+                                      "Boat, RV, van, etc.", "Apartments")))
+ahs_flat$BLD2 <- as.factor(ahs_flat$BLD2)
+# recode.bld <- c("'01'" = "Mobile home or trailer",
+#                 "'02'" = "One-family house", # detached
+#                 "'03'" = "One-family house", # attached
+#                 "'04'" = "Apartments",
+#                 "'05'" = "Apartments",
+#                 "'06'" = "Apartments",
+#                 "'07'" = "Apartments",
+#                 "'08'" = "Apartments",
+#                 "'09'" = "Apartments",
+#                 "'10'" = "oat, RV, van, etc.")
+# ahs_flat$BLD <- revalue(ahs_flat$BLD, recode.bld)
+
+# TENURE
+# levels(ahs_flat$TENURE)
+recode.tenure <- c("'1'" = "Owned or being bought by someone in your household",
+                   "'2'" = "Renter",
+                   "'3'" = "Occupied without payment of rent",
+                   "'-6'" = NA)
+ahs_flat$TENURE <- revalue(ahs_flat$TENURE, recode.tenure)
+
+# NUMPEOPLE
+# summary(ahs_flat$NUMPEOPLE)
+ahs_flat$NUMPEOPLE[ahs_flat$NUMPEOPLE < 0] <- NA
+
+# NUMYNGKIDS
+# summary(ahs_flat$NUMYNGKIDS)
+ahs_flat$NUMYNGKIDS[ahs_flat$NUMYNGKIDS < 0] <- NA
+
+# NUMOLDKIDS
+# summary(ahs_flat$NUMOLDKIDS)
+ahs_flat$NUMOLDKIDS[ahs_flat$NUMOLDKIDS < 0] <- NA
+
+# HINCP
+# summary(ahs_flat$HINCP)
+ahs_flat$HINCP[ahs_flat$HINCP == -6] <- NA
+summary(ahs_flat$HINCP[ahs_flat$HINCP < 0])
+
+# FINCP
+# summary(ahs_flat$FINCP)
+ahs_flat$FINCP[ahs_flat$FINCP == -6] <- NA
+summary(ahs_flat$FINCP[ahs_flat$FINCP < 0])
+
+# ADEQUACY
+# levels(ahs_flat$ADEQUACY)
+recode.adequacy <- c("'1'" = "Adequate",
+                   "'2'" = "Moderately inadequate",
+                   "'3'" = "Severely inadequate")
+ahs_flat$ADEQUACY <- revalue(ahs_flat$ADEQUACY, recode.adequacy)
+
+# RATINGHS
+# summary(ahs_flat$RATINGHS)
+ahs_flat$RATINGHS[ahs_flat$RATINGHS < 1] <- NA
+
+# RATINGNH
+# summary(ahs_flat$RATINGNH)
+ahs_flat$RATINGNH[ahs_flat$RATINGNH < 1] <- NA
+```
+
+## Housing assistance variables:
+```{r}
+ahs_flat$TOTHCAMT[ahs_flat$TOTHCAMT < 0] <- NA
+
+# HUDSUB
+# levels(ahs_flat$HUDSUB)
+recode.hudsub <- c("'1'" = "Public housing tenants and tenants in privately owned assisted housing units",
+                   "'2'" = "Voucher recipients",
+                   "'3'" = "All other renter occupied units",
+                   "'-6'" = NA)
+ahs_flat$HUDSUB <- revalue(ahs_flat$HUDSUB, recode.hudsub)
+
+# RENTCNTRL
+# levels(ahs_flat$RENTCNTRL)
+recode.rentcntrl <- c("'1'" = "Rent control or stabilization",
+                      "'2'" = "No rent control or stabilization",
+                      "'-9'" = NA,
+                      "'-6'" = NA)
+ahs_flat$RENTCNTRL <- revalue(ahs_flat$RENTCNTRL, recode.rentcntrl)
+
+# RENTSUB
+# levels(ahs_flat$RENTSUB)
+recode.rentsub <- c("'1'" = "Public housing",
+                    "'2'" = "Portable voucher",
+                    "'3'" = "Non-portable voucher",
+                    "'4'" = "Other government subsidy",
+                    "'5'" = "Rent reduction requiring annual recertification not reported elsewhere",
+                    "'6'" = "Rent reduction because household member works for owner",
+                    "'7'" = "Rent reduction because household member related to owner",
+                    "'8'" = "No rental subsidy or reduction",
+                    "'-9'" = NA,
+                    "'-6'" = NA)
+ahs_flat$RENTSUB <- revalue(ahs_flat$RENTSUB, recode.rentsub)
+
+# PERPOVLVL
+ahs_flat$PERPOVLVL[ahs_flat$PERPOVLVL == 1] <- 0
+ahs_flat$PERPOVLVL[ahs_flat$PERPOVLVL < 0] <- NA
+
+# POVLVLINC
+ahs_flat$POVLVLINC[ahs_flat$POVLVLINC < 0] <- NA
+
+# HUDINCLIM_80_FLAG
+ahs_flat <- ahs_flat %>% mutate(HUDINCLIM_80_FLAG = ifelse(PERPOVLVL < 80, 1, 0))
+ahs_flat$HUDINCLIM_80_FLAG <- as.factor(ahs_flat$HUDINCLIM_80_FLAG)
+
+# HUDINCLIM_50_FLAG
+ahs_flat <- ahs_flat %>% mutate(HUDINCLIM_50_FLAG = ifelse(PERPOVLVL < 50, 1, 0))
+ahs_flat$HUDINCLIM_50_FLAG <- as.factor(ahs_flat$HUDINCLIM_50_FLAG)
+
+# HUDINCLIM_30_FLAG
+ahs_flat <- ahs_flat %>% mutate(HUDINCLIM_30_FLAG = ifelse(PERPOVLVL < 30, 1, 0))
+ahs_flat$HUDINCLIM_30_FLAG <- as.factor(ahs_flat$HUDINCLIM_30_FLAG)
+```
+
+Housing delinquency:
+```{r}
+# DBMISSMORT
+# inability to pay mortgage (owners) in last 3 months, received notice
+# levels(ahs_flat$DBMISSMORT)
+ahs_flat <- ahs_flat %>% 
+  mutate(DBMISSMORT = ifelse(DBMISSMORT %in% c("'1'", "'2'", "'3'", "'4'"), 
+                             "Missed mortgage", 
+                             ifelse(DBMISSMORT == "'5'", "Did not miss", NA)))
+ahs_flat$DBMISSMORT <- as.factor(ahs_flat$DBMISSMORT)
+
+# DBMISSRENT
+# inability to pay rent (renters) in last 3 months, received notice
+# levels(ahs_flat$DBMISSRENT)
+ahs_flat <- ahs_flat %>% 
+  mutate(DBMISSRENT = ifelse(DBMISSRENT %in% c("'1'", "'2'", "'3'", "'4'"), 
+                             "Missed rent", 
+                             ifelse(DBMISSRENT == "'5'", "Did not miss", NA)))
+ahs_flat$DBMISSRENT <- as.factor(ahs_flat$DBMISSRENT)
+
+# DBEVICTHT
+# threat of eviction
+# levels(ahs_flat$DBEVICTHT)
+ahs_flat <- ahs_flat %>% 
+  mutate(DBEVICTHT = ifelse(DBEVICTHT == "'1'", "Yes", 
+         ifelse(DBMISSRENT == "'2'", "No", NA)))
+ahs_flat$DBEVICTHT <- as.factor(ahs_flat$DBEVICTHT)
+
+# DBEVICNOTE
+# notification of eviction
+# levels(ahs_flat$DBEVICNOTE)
+ahs_flat <- ahs_flat %>% 
+  mutate(DBEVICNOTE = ifelse(DBEVICNOTE == "'1'", "Yes", 
+         ifelse(DBEVICNOTE == "'2'", "No", NA)))
+ahs_flat$DBEVICNOTE <- as.factor(ahs_flat$DBEVICNOTE)
+
+# DBEVICLK
+# likelihood of eviction
+# levels(ahs_flat$DBEVICLK)
+recode.dbeviclk <- c("'1'" = "Very likely",
+                      "'2'" = "Somewhat likely",
+                      "'3'" = "Not very likely",
+                      "'-9'" = NA,
+                      "'-6'" = NA)
+ahs_flat$DBEVICLK <- revalue(ahs_flat$DBEVICLK, recode.dbeviclk)
+
+# DBEVICWHERE
+# where household would go in event of eviction
+# levels(ahs_flat$DBEVICWHERE)
+recode.dbevicwhere <- c("'1'" = "New home",
+                        "'2'" = "Friends",
+                        "'3'" = "Family",
+                        "'4'" = "Different places",
+                        "'5'" = "Shelter",
+                        "'-9'" = NA,
+                        "'-6'" = NA)
+ahs_flat$DBEVICWHERE <- revalue(ahs_flat$DBEVICWHERE, recode.dbevicwhere)
+```
+
+## Export as `ahs2017_flat_r`:
+```{r}
+write.csv(ahs_flat, "raw data/ahs2017_flat_r.csv")
+```
