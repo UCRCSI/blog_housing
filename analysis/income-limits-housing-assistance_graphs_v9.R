@@ -111,6 +111,20 @@ housing <- housing %>%
                          "No citizens in household")))
 housing$HOUSEHOLDCITSHP <- as.factor(housing$HOUSEHOLDCITSHP)
 
+# All persons in the household are citizens (1=yes, 0=no)
+housing$HOUSEHOLDCITSHP2_I <- 
+  ifelse(apply(housing[var.citshp], 1, 
+               function(x) all(!(x == "'5'"))), 1, 0)
+
+# All, at least one (but not all), none
+housing <- housing %>% 
+  mutate(HOUSEHOLDCITSHP2 = 
+           ifelse(HOUSEHOLDCITSHP2_I == 1, "All members are citizens",
+                  ifelse(HOUSEHOLDCITSHP2_I == 0 & HOUSEHOLDCITSHP_I == 1,
+                         "At least 1 citizen (but not all members)",
+                         "No citizens")))
+housing$HOUSEHOLDCITSHP2 <- as.factor(housing$HOUSEHOLDCITSHP2)
+
 # converting NAs to (Missing)
 var.races <- colnames(housing)[grepl("^RACE(_|\\d+$)", names(housing))]
 var.span <- colnames(housing)[grepl("^SPAN\\d+$", names(housing))]
@@ -123,7 +137,8 @@ col_factor <- colnames(housing)[!(colnames(housing) %in%
                                     c(var.races, var.span, var.num, var.rating,
                                       var.flag, var.pov, "X.1", "X", "HHAGE", 
                                       "HINCP", "FINCP", "TOTHCAMT", "WEIGHT",
-                                      var.citshp, "HOUSEHOLDCITSHP_I"))]
+                                      var.citshp, "HOUSEHOLDCITSHP_I",
+                                      "HOUSEHOLDCITSHP2_I"))]
 
 housing[,col_factor] <- lapply(housing[,col_factor], 
                                function(x) fct_explicit_na(x)) %>% as.data.frame
@@ -203,8 +218,8 @@ col_factor <- colnames(housing)[!(colnames(housing) %in%
                                       var.flag, var.pov, "X.1", "X", "HHAGE", 
                                       "HINCP", "FINCP", "TOTHCAMT", "WEIGHT",
                                       var.citshp, "HOUSEHOLDCITSHP_I",
-                                      "estimate", "inclim_80", "inclim_50", 
-                                      "inclim_30"))]
+                                      "HOUSEHOLDCITSHP2_I", "estimate", 
+                                      "inclim_80", "inclim_50", "inclim_30"))]
 
 housing[,col_factor] <- lapply(housing[,col_factor], 
                                function(x) fct_explicit_na(x)) %>% as.data.frame
@@ -286,18 +301,18 @@ twoway_prop <- function(df, group_var1, group_var2) {
   tmp <- 
     tmp %>% mutate(CI_lb = prop - tstat * prop_se,
                    CI_ub = prop + tstat * prop_se)
-  tmp2 <- dcast(tmp, eval(parse(text = group_var1)) ~ 
+  tmp2 <- reshape2::dcast(tmp, eval(parse(text = group_var1)) ~ 
                   eval(parse(text = group_var2)), value.var = "prop")
-  tmp3 <- dcast(tmp, eval(parse(text = group_var1)) ~ 
+  tmp3 <- reshape2::dcast(tmp, eval(parse(text = group_var1)) ~ 
                   eval(parse(text = group_var2)), value.var = "prop_se")
   colnames(tmp3) <- paste(colnames(tmp2), "_se", sep = "")
-  tmp4 <- dcast(tmp, eval(parse(text = group_var1)) ~ 
+  tmp4 <- reshape2::dcast(tmp, eval(parse(text = group_var1)) ~ 
                   eval(parse(text = group_var2)), value.var = "CI_lb")
   colnames(tmp4) <- paste(colnames(tmp2), "_CI_lb", sep = "")
-  tmp5 <- dcast(tmp, eval(parse(text = group_var1)) ~ 
+  tmp5 <- reshape2::dcast(tmp, eval(parse(text = group_var1)) ~ 
                   eval(parse(text = group_var2)), value.var = "CI_ub")
   colnames(tmp5) <- paste(colnames(tmp2), "_CI_ub", sep = "")
-  tmp6 <- dcast(tmp, eval(parse(text = group_var1)) ~ 
+  tmp6 <- reshape2::dcast(tmp, eval(parse(text = group_var1)) ~ 
                   eval(parse(text = group_var2)), value.var = "n")
   colnames(tmp6) <- paste(colnames(tmp2), "_n", sep = "")
   colnames(tmp2)[1] <- colnames(tmp3)[1] <- colnames(tmp4)[1] <-
@@ -407,18 +422,18 @@ twoway_prop_criteria <- function(df, group_var1, group_var2, criteria) {
   tmp <- 
     tmp %>% mutate(CI_lb = prop - tstat * prop_se,
                    CI_ub = prop + tstat * prop_se)
-  tmp2 <- dcast(tmp, eval(parse(text = group_var1)) ~ 
+  tmp2 <- reshape2::dcast(tmp, eval(parse(text = group_var1)) ~ 
                   eval(parse(text = group_var2)), value.var = "prop")
-  tmp3 <- dcast(tmp, eval(parse(text = group_var1)) ~ 
+  tmp3 <- reshape2::dcast(tmp, eval(parse(text = group_var1)) ~ 
                   eval(parse(text = group_var2)), value.var = "prop_se")
   colnames(tmp3) <- paste(colnames(tmp2), "_se", sep = "")
-  tmp4 <- dcast(tmp, eval(parse(text = group_var1)) ~ 
+  tmp4 <- reshape2::dcast(tmp, eval(parse(text = group_var1)) ~ 
                   eval(parse(text = group_var2)), value.var = "CI_lb")
   colnames(tmp4) <- paste(colnames(tmp2), "_CI_lb", sep = "")
-  tmp5 <- dcast(tmp, eval(parse(text = group_var1)) ~ 
+  tmp5 <- reshape2::dcast(tmp, eval(parse(text = group_var1)) ~ 
                   eval(parse(text = group_var2)), value.var = "CI_ub")
   colnames(tmp5) <- paste(colnames(tmp2), "_CI_ub", sep = "")
-  tmp6 <- dcast(tmp, eval(parse(text = group_var1)) ~ 
+  tmp6 <- reshape2::dcast(tmp, eval(parse(text = group_var1)) ~ 
                   eval(parse(text = group_var2)), value.var = "n")
   colnames(tmp6) <- paste(colnames(tmp2), "_n", sep = "")
   colnames(tmp2)[1] <- colnames(tmp3)[1] <- colnames(tmp4)[1] <-
@@ -620,7 +635,7 @@ openxlsx::saveWorkbook(excelfile_graph1, "csv files/graphs_final/graph-1-reg.xls
 
 twoway_fedsub_table <- function(group_var, sub_var) {
   prop.full <- twoway_prop(housing_weighted, group_var, sub_var)
-  nSub <- nlevels(housing[[sub_var]]) - 1
+  nSub <- length(levels(housing[[sub_var]])[levels(housing[[sub_var]]) != "(Missing)"])
   prop.sub <- prop.full[,1:(nSub+1)]
   
   if(group_var %in% race.defs) {
@@ -650,19 +665,17 @@ twoway_fedsub_table <- function(group_var, sub_var) {
   info.long$key_order <- n.levels:1
   
   ## SHEET 2: with CIs
+  col.CIlb <- names(prop.full)[grep("CI_lb", names(prop.full))]
+  col.CIub <- names(prop.full)[grep("CI_ub", names(prop.full))]
   info.CI.lb <- 
-    prop.full %>% 
-    select(group, colnames(prop.full)[nSub+2]:colnames(prop.full)[2*nSub+1]) %>% 
-    gather(., key, CI_lb, colnames(prop.full)[nSub+2]:colnames(prop.full)[2*nSub+1],
-           factor_key = TRUE)
+    prop.full %>% select(group, col.CIlb) %>% 
+    gather(., key, CI_lb, col.CIlb, factor_key = TRUE)
   levels(info.CI.lb$key) <- 
     substr(levels(info.CI.lb$key), 1, 
            nchar(levels(info.CI.lb$key))-nchar("_CI_lb"))
   info.CI.ub <- 
-    prop.full %>% 
-    select(group, colnames(prop.full)[3*nSub+2]:colnames(prop.full)[4*nSub+1]) %>% 
-    gather(., key, CI_ub, colnames(prop.full)[3*nSub+2]:colnames(prop.full)[4*nSub+1], 
-           factor_key = TRUE)
+    prop.full %>% select(group, col.CIub) %>% 
+    gather(., key, CI_ub, col.CIub, factor_key = TRUE)
   levels(info.CI.ub$key) <- 
     substr(levels(info.CI.ub$key),
            1, nchar(levels(info.CI.ub$key))-nchar("_CI_ub"))
@@ -686,24 +699,24 @@ twoway_fedsub_table <- function(group_var, sub_var) {
   addWorksheet(wb = excelfile_graph2, sheetName = sheetName2, gridLines = TRUE)
   writeData(wb = excelfile_graph2, sheet = sheetName2,
             x = info.CI.order, startCol = 1, startRow = 1)
-
+  # 
   # print(head(info.long))
   # print(info.long[info.long$key == "Public housing",])
   # print(head(info.CI.order))
-
-  # Write only PH to Excel sheet
-  addWorksheet(wb = excelfile_graph3, sheetName = sheetName1, gridLines = TRUE)
-  writeData(wb = excelfile_graph3, sheet = sheetName1,
-            x = info.long[info.long$key == "Public housing",], startCol = 1, startRow = 1)
-  addWorksheet(wb = excelfile_graph3, sheetName = sheetName2, gridLines = TRUE)
-  writeData(wb = excelfile_graph3, sheet = sheetName2,
-            x = info.CI.order[info.CI.order$key == "Public housing",], startCol = 1, startRow = 1)
+  # 
+  # # Write only PH to Excel sheet
+  # addWorksheet(wb = excelfile_graph3, sheetName = sheetName1, gridLines = TRUE)
+  # writeData(wb = excelfile_graph3, sheet = sheetName1,
+  #           x = info.long[info.long$key == "Public housing",], startCol = 1, startRow = 1)
+  # addWorksheet(wb = excelfile_graph3, sheetName = sheetName2, gridLines = TRUE)
+  # writeData(wb = excelfile_graph3, sheet = sheetName2,
+  #           x = info.CI.order[info.CI.order$key == "Public housing",], startCol = 1, startRow = 1)
 }
 
 threeway_fedsub_table <- function(group_var1, group_var2, sub_var) {
   prop.full <- threeway_prop(housing_weighted, group_var1, group_var2, sub_var)
-  nSub <- nlevels(housing[[sub_var]]) - 1
-  nRow <- nlevels(housing[[group_var2]]) - 1
+  nSub <- length(levels(housing[[group_var1]])[levels(housing[[group_var1]]) != "(Missing)"])
+  nRow <- length(levels(housing[[group_var2]])[levels(housing[[group_var2]]) != "(Missing)"])
   prop.sub <- prop.full[,1:(nSub+2)]
   
   if(group_var1 %in% race.defs) {
@@ -793,15 +806,10 @@ threeway_fedsub_table <- function(group_var1, group_var2, sub_var) {
             startCol = 1, startRow = 1)
 }
 
-twoway_fedsub_table_crit(race.var, "HOUSEHOLDCITSHP", # Universe: each racial group in PH
-                         "FEDSUB4 == 'Public Housing'") 
-group_var <- race.var
-sub_var <- "HOUSEHOLDCITSHP"
-criteria <- "FEDSUB4 == 'Public Housing'"
 twoway_fedsub_table_crit <- function(group_var, sub_var, criteria) {
   prop.full <- twoway_prop_criteria(housing_weighted, group_var, 
                                     sub_var, criteria)
-  nSub <- nlevels(housing[[sub_var]]) - 1
+  nSub <- length(levels(housing[[sub_var]])[levels(housing[[sub_var]]) != "(Missing)"])
   prop.sub <- prop.full[,1:(nSub+1)]
   
   if(group_var %in% race.defs) {
@@ -832,19 +840,17 @@ twoway_fedsub_table_crit <- function(group_var, sub_var, criteria) {
   info.long$key_order <- n.levels:1
   
   ## SHEET 2: with CIs
+  col.CIlb <- names(prop.full)[grep("CI_lb", names(prop.full))]
+  col.CIub <- names(prop.full)[grep("CI_ub", names(prop.full))]
   info.CI.lb <- 
-    prop.full %>% 
-    select(group, colnames(prop.full)[nSub+2]:colnames(prop.full)[2*nSub+1]) %>% 
-    gather(., key, CI_lb, colnames(prop.full)[nSub+2]:colnames(prop.full)[2*nSub+1],
-           factor_key = TRUE)
+    prop.full %>% select(group, col.CIlb) %>% 
+    gather(., key, CI_lb, col.CIlb, factor_key = TRUE)
   levels(info.CI.lb$key) <- 
     substr(levels(info.CI.lb$key), 1, 
            nchar(levels(info.CI.lb$key))-nchar("_CI_lb"))
   info.CI.ub <- 
-    prop.full %>% 
-    select(group, colnames(prop.full)[3*nSub+2]:colnames(prop.full)[4*nSub+1]) %>% 
-    gather(., key, CI_ub, colnames(prop.full)[3*nSub+2]:colnames(prop.full)[4*nSub+1], 
-           factor_key = TRUE)
+    prop.full %>% select(group, col.CIub) %>% 
+    gather(., key, CI_ub, col.CIub, factor_key = TRUE)
   levels(info.CI.ub$key) <- 
     substr(levels(info.CI.ub$key),
            1, nchar(levels(info.CI.ub$key))-nchar("_CI_ub"))
@@ -856,8 +862,8 @@ twoway_fedsub_table_crit <- function(group_var, sub_var, criteria) {
   info.CI.order <- 
     info.CI[order(info.CI$key, info.CI$estimate),]
   
-  sheetName1 <- paste0("by", group_var)
-  sheetName2 <- paste0("CI-by", group_var)
+  sheetName1 <- paste0("by", sub_var)
+  sheetName2 <- paste0("CI-by", sub_var)
   
   # x <- list(info.long, info.CI.order)
   # return(x)
@@ -869,15 +875,15 @@ twoway_fedsub_table_crit <- function(group_var, sub_var, criteria) {
   writeData(wb = excelfile_graph5, sheet = sheetName2,
             x = info.CI.order, startCol = 1, startRow = 1)
 
-  # print(head(info.long))
-  # print(info.long[info.long$key == "Public housing",])
-  # print(head(info.CI.order))
+  print(head(info.long))
+  print(info.long[info.long$key == "Public housing",])
+  print(head(info.CI.order))
 }
 
 # % out of group_var
 twoway_table <- function(group_var, sub_var) {
   prop.full <- twoway_prop(housing_weighted, group_var, sub_var)
-  nSub <- nlevels(housing[[sub_var]]) - 1
+  nSub <- length(levels(housing[[sub_var]])[levels(housing[[sub_var]]) != "(Missing)"])
   prop.sub <- prop.full[,1:(nSub+1)]
   
   if(sub_var %in% race.defs) {
@@ -951,7 +957,7 @@ twoway_table <- function(group_var, sub_var) {
     sheetName2 <- substr(sheetName2, 1, 30)
   }
 
-  # # Write to Excel sheet
+  # Write to Excel sheet
   addWorksheet(wb = excelfile_graph4, sheetName = sheetName1, gridLines = TRUE)
   writeData(wb = excelfile_graph4, sheet = sheetName1,
             x = info.long, startCol = 1, startRow = 1)
@@ -959,9 +965,9 @@ twoway_table <- function(group_var, sub_var) {
   writeData(wb = excelfile_graph4, sheet = sheetName2,
             x = info.CI.order, startCol = 1, startRow = 1)
 
-  # print(head(info.long))
-  # print(info.long[info.long$key == "Public housing",])
-  # print(head(info.CI.order))
+  print(head(info.long))
+  print(info.long[info.long$key == "Public housing",])
+  print(head(info.CI.order))
 
   # # Write only PH to Excel sheet
   # addWorksheet(wb = excelfile_graph3, sheetName = sheetName1, gridLines = TRUE)
@@ -978,30 +984,29 @@ twoway_table <- function(group_var, sub_var) {
 # This is twoway:
 # (A) by RACE/ETH:
 twoway_fedsub_table(race.var, "FEDSUB4") # Universe: each racial group
-twoway_table("FEDSUB4", race.var) # Universe: each type of housing
-z[[1]][z[[1]]$group == "Public housing", ]
+# twoway_table("FEDSUB4", race.var) # Universe: each type of housing
 
 # (B) by GENDER:
 twoway_fedsub_table("HHSEX", "FEDSUB4")
-twoway_table("FEDSUB4", "HHSEX")
+# twoway_table("FEDSUB4", "HHSEX")
 
 # (C) by CITSHP:
 twoway_fedsub_table("HOUSEHOLDCITSHP", "FEDSUB4") # Universe: each type citzenship
-twoway_table("FEDSUB4", "HOUSEHOLDCITSHP") # Universe: each type of housing
+# twoway_table("FEDSUB4", "HOUSEHOLDCITSHP") # Universe: each type of housing
+
+twoway_fedsub_table("HOUSEHOLDCITSHP2", "FEDSUB4") # Universe: each type citzenship
 
 twoway_fedsub_table_crit(race.var, "HOUSEHOLDCITSHP", # Universe: each racial group in PH
+                         "FEDSUB4 == 'Public housing'") 
+twoway_fedsub_table_crit(race.var, "HOUSEHOLDCITSHP2", # Universe: each racial group in PH
                          "FEDSUB4 == 'Public housing'") 
 
 
 # (D) by EDUC:
 twoway_fedsub_table("HHGRAD4", "FEDSUB4")
-twoway_table("FEDSUB4", "HHGRAD4")
+# twoway_table("FEDSUB4", "HHGRAD4")
 
 # This is threeway:
-df <- housing_weighted
-group_var1 <- race.var
-group_var2 <- "HHSEX"
-sub_var <- "FEDSUB4"
 # (A) by RACE & GENDER
 threeway_fedsub_table(race.var, "HHSEX", "FEDSUB4")
 
